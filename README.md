@@ -9,9 +9,19 @@ Create a local configuration directory and copy the safe example config:
 ```bash
 mkdir -p ~/.config/remote-info
 cp config/hosts.example.json ~/.config/remote-info/hosts.json
+chmod 600 ~/.config/remote-info/hosts.json
 ```
 
 Edit `~/.config/remote-info/hosts.json` locally so each `sshTarget` matches an SSH config alias or safe target name for your machine.
+
+Test the placeholder aliases after editing your local SSH config:
+
+```bash
+ssh -o BatchMode=yes remote-info-host-a true
+ssh -o BatchMode=yes remote-info-host-b true
+```
+
+Do not copy the edited local config into this repo. If the config is missing or malformed, the app shows the configuration error and disables refresh instead of connecting to placeholder aliases.
 
 ## Security
 
@@ -21,14 +31,17 @@ Remote Info uses `/usr/bin/ssh` and does not store keys or passwords.
 
 ## Development
 
-The package can be built with SwiftPM:
-
-```bash
-swift build
-```
-
-Tests may require full Xcode rather than Command Line Tools. If `swift test` cannot import XCTest, run:
+Tests may require full Xcode rather than Command Line Tools. If `swift test` cannot import XCTest, use the `DEVELOPER_DIR` prefix.
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
+swift build
+./script/build_and_run.sh --verify
+```
+
+Before committing, stage the intended files and run the staged secret scan:
+
+```bash
+git add <files>
+./script/check_no_secrets.sh
 ```
