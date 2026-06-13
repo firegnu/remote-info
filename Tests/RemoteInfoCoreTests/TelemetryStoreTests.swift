@@ -1,0 +1,100 @@
+@testable import RemoteInfoCore
+import XCTest
+
+@MainActor
+final class TelemetryStoreTests: XCTestCase {
+    func testRefreshAllUpdatesHostsIndependently() async {
+        let collector = FakeTelemetryCollector()
+        collector.enqueue([
+            "host-a": .success(sampleTelemetry(cpuUsagePercent: 10)),
+            "host-b": .failure(TelemetryCollectionError.sshFailed(exitCode: 255, message: "Permission denied"))
+        ])
+        let store = TelemetryStore(hosts: hosts, collector: collector)
+
+        await store.refreshAll()
+
+        XCTAssertEqual(store.hostStates[0].status, .online)
+        XCTAssertEqual(store.hostStates[0].telemetry?.cpuUsagePercent, 10)
+        XCTAssertEqual(
+            store.hostStates[1].status,
+            .offline("SSH command failed with exit code 255: Permission denied")
+        )
+        XCTAssertNil(store.hostStates[1].telemetry)
+    }
+
+    func testKeepsLastSuccessfulTelemetryWhenLaterRefreshFails() async {
+        let collector = FakeTelemetryCollector()
+        collector.enqueue([
+            "host-a": .success(sampleTelemetry(cpuUsagePercent: 10)),
+            "host-b": .success(sampleTelemetry(cpuUsagePercent: 20))
+        ])
+        collector.enqueue([
+            "host-a": .failure(TelemetryCollectionError.sshFailed(exitCode: 255, message: "Permission denied")),
+            "host-b": .success(sampleTelemetry(cpuUsagePercent: 30))
+        ])
+        let store = TelemetryStore(hosts: hosts, collector: collector)
+
+        await store.refreshAll()
+        await store.refreshAll()
+
+        XCTAssertEqual(
+            store.hostStates[0].status,
+            .offline("SSH command failed with exit code 255: Permission denied")
+        )
+        XCTAssertEqual(store.hostStates[0].telemetry?.cpuUsagePercent, 10)
+        XCTAssertEqual(store.hostStates[1].status, .online)
+        XCTAssertEqual(store.hostStates[1].telemetry?.cpuUsagePercent, 30)
+    }
+
+    private var hosts: [HostConfig] {
+        [
+            HostConfig(id: "host-a", name: "Host A", sshTarget: "remote-info-host-a"),
+            HostConfig(id: "host-b", name: "Host B", sshTarget: "remote-info-host-b")
+        ]
+    }
+
+    private func sampleTelemetry(cpuUsagePercent: Double) -> HostTelemetry {
+        HostTelemetry(
+            collectedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            latencySeconds: 0.25,
+            uptimeSeconds: 123_456,
+            load1: 0.42,
+            load5: 0.38,
+            load15: 0.31,
+            cpuUsagePercent: cpuUsagePercent,
+            memoryUsedBytes: 4_412_346_368,
+            memoryTotalBytes: 10_307_921_510,
+            rootUsedBytes: 77_309_411_328,
+            rootTotalBytes: 107_374_182_400
+        )
+    }
+}
+
+@MainActor
+private final class FakeTelemetryCollector: TelemetryCollecting {
+    private var queuedResults: [[String: Result<HostTelemetry, Error>]] = []
+    private var activeResults: [String: Result<HostTelemetry, Error>]?
+    private var remainingActiveResults = 0
+
+    func enqueue(_ results: [String: Result<HostTelemetry, Error>]) {
+        queuedResults.append(results)
+    }
+
+    func collect(for host: HostConfig) async throws -> HostTelemetry {
+        if activeResults == nil, !queuedResults.isEmpty {
+            activeResults = queuedResults.removeFirst()
+            remainingActiveResults = activeResults?.count ?? 0
+        }
+
+        guard let result = activeResults?[host.id] else {
+            throw TelemetryCollectionError.parserFailed("Missing fake result for \(host.id)")
+        }
+
+        remainingActiveResults -= 1
+        if remainingActiveResults == 0 {
+            activeResults = nil
+        }
+
+        return try result.get()
+    }
+}
