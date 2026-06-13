@@ -14,6 +14,12 @@ final class TelemetryCollectorTests: XCTestCase {
             XCTAssertEqual(host, "remote-info-host-a")
             XCTAssertTrue(script.contains("/proc/stat"))
             XCTAssertTrue(script.contains("uname -r"))
+            XCTAssertTrue(script.contains("nvidia-smi"))
+            XCTAssertTrue(
+                script.contains(
+                    "--query-gpu=index,name,driver_version,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,power.limit,fan.speed,clocks.current.graphics"
+                )
+            )
             XCTAssertEqual(timeoutSeconds, 5)
         }
         let collector = TelemetryCollector(sshRunner: runner)
@@ -22,6 +28,8 @@ final class TelemetryCollectorTests: XCTestCase {
 
         XCTAssertEqual(telemetry.cpuUsagePercent, 18.2)
         XCTAssertEqual(telemetry.kernelRelease, "6.8.0-test")
+        XCTAssertEqual(telemetry.gpus.count, 1)
+        XCTAssertEqual(telemetry.gpus[0].name, "NVIDIA GeForce RTX 5090")
         XCTAssertEqual(telemetry.latencySeconds, 0.25)
     }
 
@@ -64,6 +72,7 @@ final class TelemetryCollectorTests: XCTestCase {
     memory_total_bytes=10307921510
     root_used_bytes=77309411328
     root_total_bytes=107374182400
+    gpu=0|NVIDIA GeForce RTX 5090|575.64|88|29800|32768|72|512|575|64|2620
     """
 }
 

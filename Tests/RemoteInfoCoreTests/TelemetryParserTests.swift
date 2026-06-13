@@ -24,6 +24,18 @@ final class TelemetryParserTests: XCTestCase {
         XCTAssertEqual(telemetry.memoryTotalBytes, 10_307_921_510)
         XCTAssertEqual(telemetry.rootUsedBytes, 77_309_411_328)
         XCTAssertEqual(telemetry.rootTotalBytes, 107_374_182_400)
+        XCTAssertEqual(telemetry.gpus.count, 1)
+        XCTAssertEqual(telemetry.gpus[0].index, 0)
+        XCTAssertEqual(telemetry.gpus[0].name, "NVIDIA GeForce RTX 5090")
+        XCTAssertEqual(telemetry.gpus[0].driverVersion, "575.64")
+        XCTAssertEqual(telemetry.gpus[0].utilizationPercent, 88)
+        XCTAssertEqual(telemetry.gpus[0].memoryUsedMiB, 29_800)
+        XCTAssertEqual(telemetry.gpus[0].memoryTotalMiB, 32_768)
+        XCTAssertEqual(telemetry.gpus[0].temperatureCelsius, 72)
+        XCTAssertEqual(telemetry.gpus[0].powerDrawWatts, 512)
+        XCTAssertEqual(telemetry.gpus[0].powerLimitWatts, 575)
+        XCTAssertEqual(telemetry.gpus[0].fanSpeedPercent, 64)
+        XCTAssertEqual(telemetry.gpus[0].graphicsClockMHz, 2_620)
     }
 
     func testIgnoresUnknownKeys() throws {
@@ -168,6 +180,33 @@ final class TelemetryParserTests: XCTestCase {
         }
     }
 
+    func testAllowsOutputWithoutGPULines() throws {
+        let telemetry = try TelemetryParser().parse(
+            systemOnlyOutput,
+            collectedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            latency: 0.2
+        )
+
+        XCTAssertEqual(telemetry.gpus, [])
+    }
+
+    func testReportsMalformedGPUValues() {
+        let output = completeOutput.replacingOccurrences(of: "|88|", with: "|not-a-number|")
+
+        XCTAssertThrowsError(
+            try TelemetryParser().parse(
+                output,
+                collectedAt: Date(timeIntervalSince1970: 1_700_000_000),
+                latency: 0.2
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? TelemetryParseError,
+                .invalidNumber(key: "gpu.utilization_percent", value: "not-a-number")
+            )
+        }
+    }
+
     func testPercentFormatterHandlesNonFiniteValues() {
         XCTAssertEqual(RemoteInfoFormatters.percent(.nan), "--")
         XCTAssertEqual(RemoteInfoFormatters.percent(.infinity), "--")
@@ -184,7 +223,28 @@ final class TelemetryParserTests: XCTestCase {
         XCTAssertEqual(RemoteInfoFormatters.latency(0.125), "125 ms")
     }
 
+    func testGPUFormatters() {
+        XCTAssertEqual(RemoteInfoFormatters.mebibytesAsGibibytes(29_800), "29.1 GB")
+        XCTAssertEqual(RemoteInfoFormatters.watts(512.4), "512 W")
+        XCTAssertEqual(RemoteInfoFormatters.celsius(72.2), "72 C")
+        XCTAssertEqual(RemoteInfoFormatters.megahertzAsGigahertz(2_620), "2.62 GHz")
+    }
+
     private let completeOutput = """
+    uptime_seconds=123456
+    kernel_release=6.8.0-test
+    load1=0.42
+    load5=0.38
+    load15=0.31
+    cpu_usage_percent=18.2
+    memory_used_bytes=4412346368
+    memory_total_bytes=10307921510
+    root_used_bytes=77309411328
+    root_total_bytes=107374182400
+    gpu=0|NVIDIA GeForce RTX 5090|575.64|88|29800|32768|72|512|575|64|2620
+    """
+
+    private let systemOnlyOutput = """
     uptime_seconds=123456
     kernel_release=6.8.0-test
     load1=0.42

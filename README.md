@@ -29,6 +29,10 @@ Do not commit SSH keys, passwords, passphrases, tokens, real hostnames, or Ident
 
 Remote Info uses `/usr/bin/ssh` and does not store keys or passwords.
 
+## GPU Telemetry
+
+When `nvidia-smi` is available on a remote host, Remote Info collects GPU telemetry with `nvidia-smi --query-gpu`. No remote daemon is required. Hosts without NVIDIA telemetry still report system metrics; the GPU panel is omitted for those hosts.
+
 ## Development
 
 Tests may require full Xcode rather than Command Line Tools. If `swift test` cannot import XCTest, use the `DEVELOPER_DIR` prefix.
@@ -39,7 +43,7 @@ swift build
 ./script/build_and_run.sh --verify
 ```
 
-Use mock telemetry while adjusting the menu bar UI without connecting to real hosts:
+Use mock telemetry, including RTX 5090 GPU data, while adjusting the menu bar UI without connecting to real hosts:
 
 ```bash
 ./script/build_and_run.sh --mock

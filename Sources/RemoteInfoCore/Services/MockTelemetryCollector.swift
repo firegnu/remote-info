@@ -20,6 +20,9 @@ public actor MockTelemetryCollector: TelemetryCollecting {
         let rootTotalBytes: Int64 = 512 * 1_024 * 1_024 * 1_024
         let memoryUsageRatio = 0.42 + (phase.truncatingRemainder(dividingBy: 8) * 0.025)
         let rootUsageRatio = 0.58 + (Double(hostOffset) * 0.004)
+        let gpuUtilization = 24 + phase * 2.6
+        let gpuMemoryTotalMiB: Int64 = 32_768
+        let gpuMemoryUsedMiB = Int64(8_192 + phase * 740 + Double(hostOffset * 180))
 
         return HostTelemetry(
             collectedAt: Date(),
@@ -33,7 +36,22 @@ public actor MockTelemetryCollector: TelemetryCollecting {
             memoryUsedBytes: Int64(Double(memoryTotalBytes) * memoryUsageRatio),
             memoryTotalBytes: memoryTotalBytes,
             rootUsedBytes: Int64(Double(rootTotalBytes) * rootUsageRatio),
-            rootTotalBytes: rootTotalBytes
+            rootTotalBytes: rootTotalBytes,
+            gpus: [
+                GPUTelemetry(
+                    index: 0,
+                    name: "NVIDIA GeForce RTX 5090",
+                    driverVersion: "575.64",
+                    utilizationPercent: gpuUtilization,
+                    memoryUsedMiB: gpuMemoryUsedMiB,
+                    memoryTotalMiB: gpuMemoryTotalMiB,
+                    temperatureCelsius: 46 + phase * 1.4,
+                    powerDrawWatts: 185 + phase * 13,
+                    powerLimitWatts: 575,
+                    fanSpeedPercent: 32 + phase * 1.7,
+                    graphicsClockMHz: 1_950 + step * 11
+                )
+            ]
         )
     }
 }

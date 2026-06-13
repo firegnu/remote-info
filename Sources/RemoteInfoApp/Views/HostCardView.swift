@@ -54,23 +54,100 @@ struct HostCardView: View {
         .background(.thinMaterial, in: Capsule())
     }
 
+    @ViewBuilder
     private func metrics(for telemetry: HostTelemetry) -> some View {
-        Grid(horizontalSpacing: 10, verticalSpacing: 8) {
-            GridRow {
-                MetricView(label: "CPU", value: RemoteInfoFormatters.percent(telemetry.cpuUsagePercent))
-                MetricView(label: "LOAD", value: String(format: "%.2f", telemetry.load1))
-                MetricView(label: "MEM", value: RemoteInfoFormatters.percent(telemetry.memoryUsagePercent))
+        VStack(alignment: .leading, spacing: 10) {
+            Grid(horizontalSpacing: 10, verticalSpacing: 8) {
+                GridRow {
+                    MetricView(label: "CPU", value: RemoteInfoFormatters.percent(telemetry.cpuUsagePercent))
+                    MetricView(label: "LOAD", value: String(format: "%.2f", telemetry.load1))
+                    MetricView(label: "MEM", value: RemoteInfoFormatters.percent(telemetry.memoryUsagePercent))
+                }
+                GridRow {
+                    MetricView(label: "DISK", value: RemoteInfoFormatters.percent(telemetry.rootUsagePercent))
+                    MetricView(label: "UPTIME", value: RemoteInfoFormatters.uptime(telemetry.uptimeSeconds))
+                    MetricView(label: "SSH", value: RemoteInfoFormatters.latency(telemetry.latencySeconds))
+                }
+                GridRow {
+                    MetricView(label: "KERNEL", value: telemetry.kernelRelease)
+                        .gridCellColumns(3)
+                }
             }
-            GridRow {
-                MetricView(label: "DISK", value: RemoteInfoFormatters.percent(telemetry.rootUsagePercent))
-                MetricView(label: "UPTIME", value: RemoteInfoFormatters.uptime(telemetry.uptimeSeconds))
-                MetricView(label: "SSH", value: RemoteInfoFormatters.latency(telemetry.latencySeconds))
-            }
-            GridRow {
-                MetricView(label: "KERNEL", value: telemetry.kernelRelease)
-                    .gridCellColumns(3)
+
+            ForEach(telemetry.gpus) { gpu in
+                gpuPanel(for: gpu)
             }
         }
+    }
+
+    private func gpuPanel(for gpu: GPUTelemetry) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Divider()
+
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(gpu.name) GPU \(gpu.index)")
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                    Text("Driver \(gpu.driverVersion)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(RemoteInfoFormatters.celsius(gpu.temperatureCelsius))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .lineLimit(1)
+            }
+
+            gpuBar(
+                label: "UTIL",
+                value: gpu.utilizationPercent,
+                valueText: RemoteInfoFormatters.percent(gpu.utilizationPercent)
+            )
+            gpuBar(
+                label: "VRAM",
+                value: gpu.memoryUsagePercent,
+                valueText: "\(RemoteInfoFormatters.mebibytesAsGibibytes(gpu.memoryUsedMiB)) / \(RemoteInfoFormatters.mebibytesAsGibibytes(gpu.memoryTotalMiB))"
+            )
+
+            Grid(horizontalSpacing: 10, verticalSpacing: 6) {
+                GridRow {
+                    MetricView(
+                        label: "POWER",
+                        value: "\(RemoteInfoFormatters.watts(gpu.powerDrawWatts)) / \(RemoteInfoFormatters.watts(gpu.powerLimitWatts))"
+                    )
+                    MetricView(label: "FAN", value: RemoteInfoFormatters.percent(gpu.fanSpeedPercent))
+                    MetricView(label: "CLOCK", value: RemoteInfoFormatters.megahertzAsGigahertz(gpu.graphicsClockMHz))
+                }
+            }
+        }
+    }
+
+    private func gpuBar(label: String, value: Double, valueText: String) -> some View {
+        HStack(spacing: 8) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(width: 38, alignment: .leading)
+            ProgressView(value: boundedPercent(value), total: 100)
+                .progressViewStyle(.linear)
+            Text(valueText)
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .frame(width: 86, alignment: .trailing)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+    }
+
+    private func boundedPercent(_ value: Double) -> Double {
+        guard value.isFinite else {
+            return 0
+        }
+        return min(max(value, 0), 100)
     }
 
     private var statusText: String {

@@ -15,6 +15,14 @@ public enum RemoteInfoFormatters {
         return formatter.string(fromByteCount: value)
     }
 
+    public static func mebibytesAsGibibytes(_ value: Int64) -> String {
+        let gibibytes = Double(value) / 1_024
+        guard gibibytes.isFinite else {
+            return "--"
+        }
+        return String(format: "%.1f GB", gibibytes)
+    }
+
     public static func latency(_ value: TimeInterval) -> String {
         guard let milliseconds = roundedInt(value * 1_000) else {
             return "--"
@@ -32,6 +40,28 @@ public enum RemoteInfoFormatters {
         }
 
         return "\(hours)h"
+    }
+
+    public static func watts(_ value: Double) -> String {
+        guard let watts = roundedInt(value) else {
+            return "--"
+        }
+        return "\(watts) W"
+    }
+
+    public static func celsius(_ value: Double) -> String {
+        guard let celsius = roundedInt(value) else {
+            return "--"
+        }
+        return "\(celsius) C"
+    }
+
+    public static func megahertzAsGigahertz(_ value: Int) -> String {
+        let gigahertz = Double(value) / 1_000
+        guard gigahertz.isFinite else {
+            return "--"
+        }
+        return String(format: "%.2f GHz", gigahertz)
     }
 
     private static func roundedInt(_ value: Double) -> Int? {

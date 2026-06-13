@@ -57,6 +57,12 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
     printf 'memory_total_bytes=%s\\n' "$memory_total_bytes"
     printf 'root_used_bytes=%s\\n' "$root_used_bytes"
     printf 'root_total_bytes=%s\\n' "$root_total_bytes"
+    if command -v nvidia-smi >/dev/null 2>&1; then
+      nvidia-smi --query-gpu=index,name,driver_version,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,power.limit,fan.speed,clocks.current.graphics --format=csv,noheader,nounits |
+      awk -F ', ' 'NF == 11 {
+        printf "gpu=%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s\\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+      }'
+    fi
     """
 
     private let sshRunner: any SSHRunning
