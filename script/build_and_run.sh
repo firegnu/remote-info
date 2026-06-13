@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODE="${1:-run}"
+RAW_MODE="${1:-run}"
+MODE="$RAW_MODE"
+MOCK_MODE=0
 APP_NAME="RemoteInfo"
 BUNDLE_ID="dev.firegnu.RemoteInfo"
 MIN_SYSTEM_VERSION="14.0"
+MOCK_MODE_ENV_KEY="REMOTE_INFO_MOCK_MODE"
+
+case "$RAW_MODE" in
+  --mock|mock)
+    MODE="run"
+    MOCK_MODE=1
+    ;;
+esac
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
@@ -50,7 +60,11 @@ cat >"$INFO_PLIST" <<PLIST
 PLIST
 
 open_app() {
-  /usr/bin/open -n "$APP_BUNDLE"
+  if [[ "$MOCK_MODE" == "1" ]]; then
+    /usr/bin/open --env "$MOCK_MODE_ENV_KEY=1" -n "$APP_BUNDLE"
+  else
+    /usr/bin/open -n "$APP_BUNDLE"
+  fi
 }
 
 verify_bundle_metadata() {
@@ -82,7 +96,7 @@ case "$MODE" in
     pgrep -x "$APP_NAME" >/dev/null
     ;;
   *)
-    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify]" >&2
+    echo "usage: $0 [run|--mock|--debug|--logs|--telemetry|--verify]" >&2
     exit 2
     ;;
 esac

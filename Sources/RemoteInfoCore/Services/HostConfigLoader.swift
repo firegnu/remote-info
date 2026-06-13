@@ -1,6 +1,10 @@
 import Foundation
 
-public struct HostConfigLoader: Sendable {
+public protocol HostConfigLoading {
+    func loadDefault() throws -> [HostConfig]
+}
+
+public struct HostConfigLoader: HostConfigLoading, Sendable {
     public init() {}
 
     public func defaultConfigURL() -> URL {

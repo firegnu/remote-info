@@ -39,6 +39,12 @@ swift build
 ./script/build_and_run.sh --verify
 ```
 
+Use mock telemetry while adjusting the menu bar UI without connecting to real hosts:
+
+```bash
+./script/build_and_run.sh --mock
+```
+
 Before committing, stage the intended files and run the staged secret scan:
 
 ```bash

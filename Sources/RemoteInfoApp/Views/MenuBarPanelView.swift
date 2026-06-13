@@ -5,10 +5,15 @@ struct MenuBarPanelView: View {
     @ObservedObject var store: TelemetryStore
     let configurationError: String?
     let refreshEnabled: Bool
+    let isMockMode: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
+
+            if isMockMode {
+                mockModeView
+            }
 
             if let configurationError {
                 configurationErrorView(configurationError)
@@ -61,7 +66,7 @@ struct MenuBarPanelView: View {
 
     private var footer: some View {
         HStack(spacing: 12) {
-            Label("~/.config/remote-info/hosts.json", systemImage: "gearshape")
+            Label(footerText, systemImage: isMockMode ? "shippingbox" : "gearshape")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -74,6 +79,28 @@ struct MenuBarPanelView: View {
             }
             .controlSize(.small)
         }
+    }
+
+    private var mockModeView: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "shippingbox.fill")
+                .foregroundStyle(.blue)
+            Text("Mock telemetry mode")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var footerText: String {
+        if isMockMode {
+            return "Using local mock data"
+        }
+
+        return "~/.config/remote-info/hosts.json"
     }
 
     private var lastRefreshText: String {

@@ -6,12 +6,14 @@ struct RemoteInfoApp: App {
     @StateObject private var store: TelemetryStore
     private let configurationError: String?
     private let refreshEnabled: Bool
+    private let isMockMode: Bool
 
     init() {
-        let bootstrap = Self.bootstrapStore()
+        let bootstrap = TelemetryBootstrapper.bootstrap()
         _store = StateObject(wrappedValue: bootstrap.store)
         configurationError = bootstrap.configurationError
         refreshEnabled = bootstrap.refreshEnabled
+        isMockMode = bootstrap.isMockMode
 
         if bootstrap.refreshEnabled {
             Task { @MainActor in
@@ -26,32 +28,10 @@ struct RemoteInfoApp: App {
             MenuBarPanelView(
                 store: store,
                 configurationError: configurationError,
-                refreshEnabled: refreshEnabled
+                refreshEnabled: refreshEnabled,
+                isMockMode: isMockMode
             )
         }
         .menuBarExtraStyle(.window)
-    }
-
-    @MainActor
-    private static func bootstrapStore() -> (
-        store: TelemetryStore,
-        configurationError: String?,
-        refreshEnabled: Bool
-    ) {
-        do {
-            let hosts = try HostConfigLoader().loadDefault()
-            return (TelemetryStore(hosts: hosts), nil, true)
-        } catch {
-            return (
-                TelemetryStore(
-                    hosts: [
-                        HostConfig(id: "host-a", name: "Host A", sshTarget: "remote-info-host-a"),
-                        HostConfig(id: "host-b", name: "Host B", sshTarget: "remote-info-host-b")
-                    ]
-                ),
-                error.localizedDescription,
-                false
-            )
-        }
     }
 }
