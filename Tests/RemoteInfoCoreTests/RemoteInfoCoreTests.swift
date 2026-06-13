@@ -1,4 +1,9 @@
-import Testing
+@testable import RemoteInfoCore
+import XCTest
 
-@Test
-func remoteInfoCoreTestTargetBuilds() {}
+final class RemoteInfoCoreTests: XCTestCase {
+    func testAppMetadata() {
+        XCTAssertEqual(RemoteInfoCore.appName, "RemoteInfo")
+        XCTAssertEqual(RemoteInfoCore.bundleIdentifier, "dev.firegnu.RemoteInfo")
+    }
+}
