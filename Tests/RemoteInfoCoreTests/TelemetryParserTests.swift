@@ -167,6 +167,16 @@ final class TelemetryParserTests: XCTestCase {
         XCTAssertEqual(RemoteInfoFormatters.percent(.nan), "--")
         XCTAssertEqual(RemoteInfoFormatters.percent(.infinity), "--")
         XCTAssertEqual(RemoteInfoFormatters.percent(-.infinity), "--")
+        XCTAssertEqual(RemoteInfoFormatters.percent(1e100), "--")
+        XCTAssertEqual(RemoteInfoFormatters.percent(42.4), "42%")
+    }
+
+    func testLatencyFormatterHandlesNonFiniteValues() {
+        XCTAssertEqual(RemoteInfoFormatters.latency(.nan), "--")
+        XCTAssertEqual(RemoteInfoFormatters.latency(.infinity), "--")
+        XCTAssertEqual(RemoteInfoFormatters.latency(-.infinity), "--")
+        XCTAssertEqual(RemoteInfoFormatters.latency(1e100), "--")
+        XCTAssertEqual(RemoteInfoFormatters.latency(0.125), "125 ms")
     }
 
     private let completeOutput = """

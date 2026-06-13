@@ -2,11 +2,11 @@ import Foundation
 
 public enum RemoteInfoFormatters {
     public static func percent(_ value: Double) -> String {
-        guard value.isFinite else {
+        guard let roundedValue = roundedInt(value) else {
             return "--"
         }
 
-        return "\(Int(value.rounded()))%"
+        return "\(roundedValue)%"
     }
 
     public static func bytes(_ value: Int64) -> String {
@@ -16,7 +16,11 @@ public enum RemoteInfoFormatters {
     }
 
     public static func latency(_ value: TimeInterval) -> String {
-        "\(Int((value * 1_000).rounded())) ms"
+        guard let milliseconds = roundedInt(value * 1_000) else {
+            return "--"
+        }
+
+        return "\(milliseconds) ms"
     }
 
     public static func uptime(_ value: Int) -> String {
@@ -28,5 +32,18 @@ public enum RemoteInfoFormatters {
         }
 
         return "\(hours)h"
+    }
+
+    private static func roundedInt(_ value: Double) -> Int? {
+        let roundedValue = value.rounded()
+        let upperBound = Double(Int.max)
+
+        guard roundedValue.isFinite,
+              roundedValue >= Double(Int.min),
+              roundedValue < upperBound else {
+            return nil
+        }
+
+        return Int(roundedValue)
     }
 }
