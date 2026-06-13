@@ -37,6 +37,10 @@ When `nvidia-smi` is available on a remote host, Remote Info collects GPU teleme
 
 Remote Info also shows the top CPU-consuming processes and the default network interface. Process telemetry uses `ps` short command names only, not full command lines or arguments. Network telemetry reads the default outbound interface and `/proc/net/dev` counters over the existing one-second sample window.
 
+## Refresh Behavior
+
+Remote Info refreshes once when the app starts, then refreshes every five minutes. Opening the menu bar panel does not force a refresh; use the refresh button for an on-demand update.
+
 ## Development
 
 Tests may require full Xcode rather than Command Line Tools. If `swift test` cannot import XCTest, use the `DEVELOPER_DIR` prefix.

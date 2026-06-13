@@ -3,6 +3,10 @@ import XCTest
 
 @MainActor
 final class TelemetryStoreTests: XCTestCase {
+    func testDefaultPeriodicRefreshIntervalIsFiveMinutes() {
+        XCTAssertEqual(TelemetryStore.defaultPeriodicRefreshInterval, 300)
+    }
+
     func testRefreshAllUpdatesHostsIndependently() async {
         let collector = FakeTelemetryCollector()
         collector.enqueue([

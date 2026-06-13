@@ -26,6 +26,8 @@ public struct HostState: Equatable, Identifiable, Sendable {
 
 @MainActor
 public final class TelemetryStore: ObservableObject {
+    public static let defaultPeriodicRefreshInterval: TimeInterval = 300
+
     @Published public private(set) var hostStates: [HostState]
     @Published public private(set) var lastRefreshStartedAt: Date?
 
@@ -71,7 +73,7 @@ public final class TelemetryStore: ObservableObject {
         }
     }
 
-    public func startPeriodicRefresh(every seconds: TimeInterval = 60) {
+    public func startPeriodicRefresh(every seconds: TimeInterval = defaultPeriodicRefreshInterval) {
         stopPeriodicRefresh()
 
         guard seconds > 0 else {
