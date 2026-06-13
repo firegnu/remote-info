@@ -27,23 +27,30 @@ public struct HostState: Equatable, Identifiable, Sendable {
 @MainActor
 public final class TelemetryStore: ObservableObject {
     public static let defaultPeriodicRefreshInterval: TimeInterval = 300
+    public static let defaultStaleTelemetryInterval: TimeInterval = 600
+    public static let defaultStaleStatusUpdateInterval: TimeInterval = 60
 
     @Published public private(set) var hostStates: [HostState]
     @Published public private(set) var lastRefreshStartedAt: Date?
 
     private let collector: any TelemetryCollecting
+    private let staleTelemetryInterval: TimeInterval
     private var periodicRefreshTask: Task<Void, Never>?
+    private var staleStatusTask: Task<Void, Never>?
 
     public init(
         hosts: [HostConfig],
-        collector: any TelemetryCollecting = TelemetryCollector()
+        collector: any TelemetryCollecting = TelemetryCollector(),
+        staleTelemetryInterval: TimeInterval = defaultStaleTelemetryInterval
     ) {
         self.hostStates = hosts.map { HostState(host: $0) }
         self.collector = collector
+        self.staleTelemetryInterval = staleTelemetryInterval
     }
 
     deinit {
         periodicRefreshTask?.cancel()
+        staleStatusTask?.cancel()
     }
 
     public var onlineCount: Int {
@@ -62,6 +69,7 @@ public final class TelemetryStore: ObservableObject {
     }
 
     public func refreshAll() async {
+        updateStaleStatuses()
         lastRefreshStartedAt = Date()
         let refreshRequests = hostStates.indices.compactMap { index -> HostRefreshRequest? in
             if hostStates[index].isRefreshing {
@@ -100,12 +108,33 @@ public final class TelemetryStore: ObservableObject {
         }
     }
 
-    public func startPeriodicRefresh(every seconds: TimeInterval = defaultPeriodicRefreshInterval) {
+    public func updateStaleStatuses(asOf date: Date = Date()) {
+        for index in hostStates.indices {
+            guard let telemetry = hostStates[index].telemetry else {
+                continue
+            }
+
+            switch hostStates[index].status {
+            case .online, .stale:
+                let age = date.timeIntervalSince(telemetry.collectedAt)
+                hostStates[index].status = age > staleTelemetryInterval ? .stale : .online
+            case .idle, .loading, .offline:
+                continue
+            }
+        }
+    }
+
+    public func startPeriodicRefresh(
+        every seconds: TimeInterval = defaultPeriodicRefreshInterval,
+        staleStatusUpdateInterval: TimeInterval = defaultStaleStatusUpdateInterval
+    ) {
         stopPeriodicRefresh()
 
         guard seconds > 0 else {
             return
         }
+
+        startStaleStatusUpdates(every: staleStatusUpdateInterval)
 
         periodicRefreshTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -124,6 +153,27 @@ public final class TelemetryStore: ObservableObject {
     public func stopPeriodicRefresh() {
         periodicRefreshTask?.cancel()
         periodicRefreshTask = nil
+        staleStatusTask?.cancel()
+        staleStatusTask = nil
+    }
+
+    private func startStaleStatusUpdates(every seconds: TimeInterval) {
+        guard seconds > 0 else {
+            return
+        }
+
+        staleStatusTask = Task { [weak self] in
+            while !Task.isCancelled {
+                let nanoseconds = UInt64(seconds * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: nanoseconds)
+
+                if Task.isCancelled {
+                    break
+                }
+
+                self?.updateStaleStatuses()
+            }
+        }
     }
 
 }

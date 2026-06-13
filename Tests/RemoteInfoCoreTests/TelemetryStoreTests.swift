@@ -7,6 +7,10 @@ final class TelemetryStoreTests: XCTestCase {
         XCTAssertEqual(TelemetryStore.defaultPeriodicRefreshInterval, 300)
     }
 
+    func testDefaultStaleTelemetryIntervalIsTenMinutes() {
+        XCTAssertEqual(TelemetryStore.defaultStaleTelemetryInterval, 600)
+    }
+
     func testRefreshAllUpdatesHostsIndependently() async {
         let collector = FakeTelemetryCollector()
         collector.enqueue([
@@ -48,6 +52,61 @@ final class TelemetryStoreTests: XCTestCase {
         XCTAssertEqual(store.hostStates[0].telemetry?.cpuUsagePercent, 10)
         XCTAssertEqual(store.hostStates[1].status, .online)
         XCTAssertEqual(store.hostStates[1].telemetry?.cpuUsagePercent, 30)
+    }
+
+    func testMarksOldSuccessfulTelemetryAsStale() async {
+        let collector = FakeTelemetryCollector()
+        collector.enqueue([
+            "host-a": .success(sampleTelemetry(collectedAt: Date(timeIntervalSince1970: 1_700_000_000), cpuUsagePercent: 10)),
+            "host-b": .success(sampleTelemetry(collectedAt: Date(timeIntervalSince1970: 1_700_000_500), cpuUsagePercent: 20))
+        ])
+        let store = TelemetryStore(hosts: hosts, collector: collector)
+
+        await store.refreshAll()
+        store.updateStaleStatuses(asOf: Date(timeIntervalSince1970: 1_700_000_700))
+
+        XCTAssertEqual(store.hostStates[0].status, .stale)
+        XCTAssertEqual(store.hostStates[1].status, .online)
+    }
+
+    func testSuccessfulRefreshRestoresStaleHostToOnline() async {
+        let collector = FakeTelemetryCollector()
+        collector.enqueue([
+            "host-a": .success(sampleTelemetry(collectedAt: Date(timeIntervalSince1970: 1_700_000_000), cpuUsagePercent: 10)),
+            "host-b": .success(sampleTelemetry(collectedAt: Date(timeIntervalSince1970: 1_700_000_000), cpuUsagePercent: 20))
+        ])
+        collector.enqueue([
+            "host-a": .success(sampleTelemetry(collectedAt: Date(timeIntervalSince1970: 1_700_000_700), cpuUsagePercent: 30)),
+            "host-b": .success(sampleTelemetry(collectedAt: Date(timeIntervalSince1970: 1_700_000_700), cpuUsagePercent: 40))
+        ])
+        let store = TelemetryStore(hosts: hosts, collector: collector)
+
+        await store.refreshAll()
+        store.updateStaleStatuses(asOf: Date(timeIntervalSince1970: 1_700_000_700))
+        await store.refreshAll()
+
+        XCTAssertEqual(store.hostStates[0].status, .online)
+        XCTAssertEqual(store.hostStates[0].telemetry?.cpuUsagePercent, 30)
+        XCTAssertEqual(store.hostStates[1].status, .online)
+    }
+
+    func testPeriodicStaleStatusCheckDoesNotWaitForNextRefresh() async throws {
+        let collector = FakeTelemetryCollector()
+        collector.enqueue([
+            "host-a": .success(sampleTelemetry(collectedAt: Date(timeIntervalSince1970: 1_700_000_000), cpuUsagePercent: 10)),
+            "host-b": .success(sampleTelemetry(collectedAt: Date(timeIntervalSince1970: 1_700_000_000), cpuUsagePercent: 20))
+        ])
+        let store = TelemetryStore(hosts: hosts, collector: collector, staleTelemetryInterval: 0.01)
+
+        await store.refreshAll()
+        store.startPeriodicRefresh(every: 10, staleStatusUpdateInterval: 0.01)
+        try await Task.sleep(nanoseconds: 40_000_000)
+
+        XCTAssertEqual(store.hostStates[0].status, .stale)
+        XCTAssertEqual(store.hostStates[1].status, .stale)
+        XCTAssertEqual(collector.collectCount, 2)
+
+        store.stopPeriodicRefresh()
     }
 
     func testRefreshAllStartsHostCollectionsConcurrently() async {
@@ -100,9 +159,12 @@ final class TelemetryStoreTests: XCTestCase {
         ]
     }
 
-    private func sampleTelemetry(cpuUsagePercent: Double) -> HostTelemetry {
+    private func sampleTelemetry(
+        collectedAt: Date = Date(timeIntervalSince1970: 1_700_000_000),
+        cpuUsagePercent: Double
+    ) -> HostTelemetry {
         HostTelemetry(
-            collectedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            collectedAt: collectedAt,
             latencySeconds: 0.25,
             kernelRelease: "6.8.0-test",
             uptimeSeconds: 123_456,

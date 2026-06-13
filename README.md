@@ -39,7 +39,7 @@ Remote Info also shows the top CPU-consuming processes and the default network i
 
 ## Refresh Behavior
 
-Remote Info refreshes once when the app starts, then refreshes every five minutes. Opening the menu bar panel does not force a refresh; use the refresh button for an on-demand update. The two configured hosts are collected concurrently.
+Remote Info refreshes once when the app starts, then refreshes every five minutes. Opening the menu bar panel does not force a refresh; use the refresh button for an on-demand update. The two configured hosts are collected concurrently. Successful telemetry older than ten minutes is marked stale until a later successful refresh replaces it.
 
 ## Development
 
