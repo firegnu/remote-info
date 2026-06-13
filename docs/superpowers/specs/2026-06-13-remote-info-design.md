@@ -167,9 +167,9 @@ The app should not retry in a tight loop. Periodic refresh is enough for version
 
 ## Configuration
 
-Version one hardcodes the two host configs in source. A file-backed settings store can be added later if editing host configuration in code becomes annoying.
+Version one uses a local file-backed host configuration rather than committing real host details to source control. The repository can include a non-sensitive example file with placeholder host aliases, but the real two-host configuration should live outside tracked source, such as `~/.config/remote-info/hosts.json`.
 
-The app should not store private keys, passwords, or passphrases.
+The app should not store private keys, passwords, passphrases, tokens, or real host secrets in tracked files.
 
 ## Quality Bar
 
@@ -217,5 +217,5 @@ The first version is not a throwaway prototype. It should meet these standards:
   - Mitigation: use `BatchMode=yes`, short connect timeout, and no password UI.
 - Menu bar panels can become cramped.
   - Mitigation: keep version one to two host cards and summary metrics only.
-- Hardcoded host config may become annoying later.
-  - Mitigation: isolate `HostConfig` so a settings file or settings window can be added without touching collection logic.
+- Local host configuration can be missing or malformed.
+  - Mitigation: show a clear setup error and keep a non-sensitive example config in the repository.
