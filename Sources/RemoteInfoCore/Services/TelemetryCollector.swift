@@ -32,7 +32,17 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
 
     read_network() {
       interface="$1"
-      awk -v iface="$interface" -F '[: ]+' '$2 == iface { print $3" "$11" "$5" "$13" "$6" "$14 }' /proc/net/dev 2>/dev/null
+      awk -v iface="$interface" -F ':' '
+      {
+        interface_name=$1;
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", interface_name);
+        if (interface_name == iface) {
+          counters=$2;
+          gsub(/^[[:space:]]+/, "", counters);
+          split(counters, fields, /[[:space:]]+/);
+          print fields[1]" "fields[9]" "fields[3]" "fields[11]" "fields[4]" "fields[12];
+        }
+      }' /proc/net/dev 2>/dev/null
     }
 
     network_interface="$(read_network_interface || true)"

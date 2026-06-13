@@ -17,6 +17,8 @@ final class TelemetryCollectorTests: XCTestCase {
             XCTAssertTrue(script.contains("nvidia-smi"))
             XCTAssertTrue(script.contains("ps -eo pid=,comm=,pcpu=,pmem= --sort=-pcpu"))
             XCTAssertTrue(script.contains("/proc/net/dev"))
+            XCTAssertTrue(script.contains("-F ':'"))
+            XCTAssertTrue(script.contains("gsub(/^[[:space:]]+|[[:space:]]+$/, \"\", interface_name)"))
             XCTAssertTrue(script.contains("ip route get 1.1.1.1"))
             XCTAssertTrue(
                 script.contains(
