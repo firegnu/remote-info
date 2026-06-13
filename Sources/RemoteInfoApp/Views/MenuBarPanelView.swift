@@ -4,6 +4,7 @@ import SwiftUI
 struct MenuBarPanelView: View {
     @ObservedObject var store: TelemetryStore
     let configurationError: String?
+    let refreshEnabled: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -43,15 +44,17 @@ struct MenuBarPanelView: View {
             Spacer()
 
             Button {
-                Task {
-                    await store.refreshAll()
+                if refreshEnabled {
+                    Task {
+                        await store.refreshAll()
+                    }
                 }
             } label: {
                 Image(systemName: "arrow.clockwise")
                     .imageScale(.medium)
             }
             .buttonStyle(.borderless)
-            .disabled(store.hostStates.contains { $0.isRefreshing })
+            .disabled(!refreshEnabled || store.hostStates.contains { $0.isRefreshing })
             .help("Refresh")
         }
     }
