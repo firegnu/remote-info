@@ -25,7 +25,7 @@ final class TelemetryCollectorTests: XCTestCase {
                     "--query-gpu=index,name,driver_version,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,power.limit,fan.speed,clocks.current.graphics"
                 )
             )
-            XCTAssertEqual(timeoutSeconds, 5)
+            XCTAssertEqual(timeoutSeconds, 20)
         }
         let collector = TelemetryCollector(sshRunner: runner)
 

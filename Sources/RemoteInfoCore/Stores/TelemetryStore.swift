@@ -26,7 +26,7 @@ public struct HostState: Equatable, Identifiable, Sendable {
 
 @MainActor
 public final class TelemetryStore: ObservableObject {
-    public static let defaultPeriodicRefreshInterval: TimeInterval = 300
+    public static let defaultPeriodicRefreshInterval: TimeInterval = 1_800
     public static let defaultStaleTelemetryInterval: TimeInterval = 600
     public static let defaultStaleStatusUpdateInterval: TimeInterval = 60
 

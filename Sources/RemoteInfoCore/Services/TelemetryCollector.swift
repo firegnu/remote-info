@@ -138,11 +138,12 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
     private let sshRunner: any SSHRunning
     private let parser: TelemetryParser
     private let timeoutSeconds: TimeInterval
+    public static let defaultTimeoutSeconds: TimeInterval = 20
 
     public init(
         sshRunner: any SSHRunning = SSHClient(),
         parser: TelemetryParser = TelemetryParser(),
-        timeoutSeconds: TimeInterval = 5
+        timeoutSeconds: TimeInterval = Self.defaultTimeoutSeconds
     ) {
         self.sshRunner = sshRunner
         self.parser = parser

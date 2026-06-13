@@ -3,8 +3,8 @@ import XCTest
 
 @MainActor
 final class TelemetryStoreTests: XCTestCase {
-    func testDefaultPeriodicRefreshIntervalIsFiveMinutes() {
-        XCTAssertEqual(TelemetryStore.defaultPeriodicRefreshInterval, 300)
+    func testDefaultPeriodicRefreshIntervalIsThirtyMinutes() {
+        XCTAssertEqual(TelemetryStore.defaultPeriodicRefreshInterval, 1_800)
     }
 
     func testDefaultStaleTelemetryIntervalIsTenMinutes() {
