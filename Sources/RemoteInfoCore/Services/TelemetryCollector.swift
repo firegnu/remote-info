@@ -119,7 +119,8 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
     printf 'root_used_bytes=%s\\n' "$root_used_bytes"
     printf 'root_total_bytes=%s\\n' "$root_total_bytes"
     if [ -n "$network_line" ]; then
-      printf '%s' "$network_line"
+      # Command substitution strips the awk newline, so terminate the buffered line here.
+      printf '%s\\n' "$network_line"
     fi
     ps -eo pid=,comm=,pcpu=,pmem= --sort=-pcpu 2>/dev/null |
     awk 'NR <= 3 {

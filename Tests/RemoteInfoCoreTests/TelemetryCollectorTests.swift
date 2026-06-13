@@ -41,6 +41,10 @@ final class TelemetryCollectorTests: XCTestCase {
         XCTAssertEqual(telemetry.latencySeconds, 0.25)
     }
 
+    func testRemoteScriptPrintsBufferedNetworkLineWithLineTerminator() {
+        XCTAssertTrue(TelemetryCollector.remoteScript.contains("printf '%s\\n' \"$network_line\""))
+    }
+
     func testReportsSSHFailure() async throws {
         let runner = FakeSSHRunner(
             result: SSHResult(
