@@ -15,6 +15,10 @@ public enum RemoteInfoFormatters {
         return formatter.string(fromByteCount: value)
     }
 
+    public static func bytesPerSecond(_ value: Int64) -> String {
+        "\(bytes(value))/s"
+    }
+
     public static func mebibytesAsGibibytes(_ value: Int64) -> String {
         let gibibytes = Double(value) / 1_024
         guard gibibytes.isFinite else {

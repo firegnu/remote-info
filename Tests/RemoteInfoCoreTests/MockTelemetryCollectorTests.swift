@@ -16,6 +16,12 @@ final class MockTelemetryCollectorTests: XCTestCase {
         XCTAssertEqual(gpu.name, "NVIDIA GeForce RTX 5090")
         XCTAssertEqual(gpu.memoryTotalMiB, 32_768)
         XCTAssertGreaterThan(gpu.utilizationPercent, 0)
+        XCTAssertFalse(telemetry.topProcesses.isEmpty)
+        XCTAssertEqual(telemetry.topProcesses[0].command, "python3")
+        let network = try XCTUnwrap(telemetry.network)
+        XCTAssertEqual(network.interfaceName, "eth0")
+        XCTAssertEqual(network.operstate, "up")
+        XCTAssertGreaterThan(network.receiveBytesPerSecond, 0)
     }
 
     func testTelemetryChangesAcrossCollections() async throws {
@@ -31,5 +37,7 @@ final class MockTelemetryCollectorTests: XCTestCase {
         let secondGPU = try XCTUnwrap(second.gpus.first)
         XCTAssertNotEqual(firstGPU.utilizationPercent, secondGPU.utilizationPercent)
         XCTAssertNotEqual(firstGPU.memoryUsedMiB, secondGPU.memoryUsedMiB)
+        XCTAssertNotEqual(first.topProcesses[0].cpuPercent, second.topProcesses[0].cpuPercent)
+        XCTAssertNotEqual(first.network?.receiveBytesPerSecond, second.network?.receiveBytesPerSecond)
     }
 }

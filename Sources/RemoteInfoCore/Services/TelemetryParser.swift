@@ -44,13 +44,17 @@ public struct TelemetryParser: Sendable {
             memoryTotalBytes: try int64Value("memory_total_bytes", in: values),
             rootUsedBytes: try int64Value("root_used_bytes", in: values),
             rootTotalBytes: try int64Value("root_total_bytes", in: values),
-            gpus: try gpuValues(from: parsedOutput.gpuPayloads)
+            gpus: try gpuValues(from: parsedOutput.gpuPayloads),
+            topProcesses: try processValues(from: parsedOutput.processPayloads),
+            network: try networkValue(from: parsedOutput.networkPayload)
         )
     }
 
     private func parseValues(from output: String) throws -> ParsedTelemetryOutput {
         var values: [String: String] = [:]
         var gpuPayloads: [String] = []
+        var processPayloads: [String] = []
+        var networkPayload: String?
 
         for rawLine in output.split(whereSeparator: \.isNewline) {
             let line = String(rawLine)
@@ -66,13 +70,29 @@ public struct TelemetryParser: Sendable {
                 gpuPayloads.append(value)
                 continue
             }
+            if key == "process" {
+                processPayloads.append(value)
+                continue
+            }
+            if key == "network" {
+                if networkPayload != nil {
+                    throw TelemetryParseError.duplicateKey(key)
+                }
+                networkPayload = value
+                continue
+            }
             if values[key] != nil {
                 throw TelemetryParseError.duplicateKey(key)
             }
             values[key] = value
         }
 
-        return ParsedTelemetryOutput(values: values, gpuPayloads: gpuPayloads)
+        return ParsedTelemetryOutput(
+            values: values,
+            gpuPayloads: gpuPayloads,
+            processPayloads: processPayloads,
+            networkPayload: networkPayload
+        )
     }
 
     private func gpuValues(from payloads: [String]) throws -> [GPUTelemetry] {
@@ -97,6 +117,46 @@ public struct TelemetryParser: Sendable {
             powerLimitWatts: try doubleValue("gpu.power_limit_watts", value: fields[8]),
             fanSpeedPercent: try doubleValue("gpu.fan_speed_percent", value: fields[9]),
             graphicsClockMHz: try intValue("gpu.graphics_clock_mhz", value: fields[10])
+        )
+    }
+
+    private func processValues(from payloads: [String]) throws -> [ProcessTelemetry] {
+        try payloads.map(processValue)
+    }
+
+    private func processValue(from payload: String) throws -> ProcessTelemetry {
+        let fields = payload.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+        guard fields.count == 4 else {
+            throw TelemetryParseError.invalidLine("process=\(payload)")
+        }
+
+        return ProcessTelemetry(
+            pid: try intValue("process.pid", value: fields[0]),
+            command: fields[1],
+            cpuPercent: try doubleValue("process.cpu_percent", value: fields[2]),
+            memoryPercent: try doubleValue("process.memory_percent", value: fields[3])
+        )
+    }
+
+    private func networkValue(from payload: String?) throws -> NetworkTelemetry? {
+        guard let payload else {
+            return nil
+        }
+
+        let fields = payload.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+        guard fields.count == 8 else {
+            throw TelemetryParseError.invalidLine("network=\(payload)")
+        }
+
+        return NetworkTelemetry(
+            interfaceName: fields[0],
+            operstate: fields[1],
+            receiveBytesPerSecond: try int64Value("network.receive_bytes_per_second", value: fields[2]),
+            transmitBytesPerSecond: try int64Value("network.transmit_bytes_per_second", value: fields[3]),
+            receiveErrors: try int64Value("network.receive_errors", value: fields[4]),
+            transmitErrors: try int64Value("network.transmit_errors", value: fields[5]),
+            receiveDrops: try int64Value("network.receive_drops", value: fields[6]),
+            transmitDrops: try int64Value("network.transmit_drops", value: fields[7])
         )
     }
 
@@ -147,4 +207,6 @@ public struct TelemetryParser: Sendable {
 private struct ParsedTelemetryOutput {
     let values: [String: String]
     let gpuPayloads: [String]
+    let processPayloads: [String]
+    let networkPayload: String?
 }

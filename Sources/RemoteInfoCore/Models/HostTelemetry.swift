@@ -14,6 +14,8 @@ public struct HostTelemetry: Equatable, Sendable {
     public let rootUsedBytes: Int64
     public let rootTotalBytes: Int64
     public let gpus: [GPUTelemetry]
+    public let topProcesses: [ProcessTelemetry]
+    public let network: NetworkTelemetry?
 
     public init(
         collectedAt: Date,
@@ -28,7 +30,9 @@ public struct HostTelemetry: Equatable, Sendable {
         memoryTotalBytes: Int64,
         rootUsedBytes: Int64,
         rootTotalBytes: Int64,
-        gpus: [GPUTelemetry] = []
+        gpus: [GPUTelemetry] = [],
+        topProcesses: [ProcessTelemetry] = [],
+        network: NetworkTelemetry? = nil
     ) {
         self.collectedAt = collectedAt
         self.latencySeconds = latencySeconds
@@ -43,6 +47,8 @@ public struct HostTelemetry: Equatable, Sendable {
         self.rootUsedBytes = rootUsedBytes
         self.rootTotalBytes = rootTotalBytes
         self.gpus = gpus
+        self.topProcesses = topProcesses
+        self.network = network
     }
 
     public var memoryUsagePercent: Double {

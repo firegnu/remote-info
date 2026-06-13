@@ -23,6 +23,8 @@ public actor MockTelemetryCollector: TelemetryCollecting {
         let gpuUtilization = 24 + phase * 2.6
         let gpuMemoryTotalMiB: Int64 = 32_768
         let gpuMemoryUsedMiB = Int64(8_192 + phase * 740 + Double(hostOffset * 180))
+        let receiveBytesPerSecond = Int64(4_200_000 + step * 480_000)
+        let transmitBytesPerSecond = Int64(760_000 + step * 110_000)
 
         return HostTelemetry(
             collectedAt: Date(),
@@ -51,7 +53,37 @@ public actor MockTelemetryCollector: TelemetryCollecting {
                     fanSpeedPercent: 32 + phase * 1.7,
                     graphicsClockMHz: 1_950 + step * 11
                 )
-            ]
+            ],
+            topProcesses: [
+                ProcessTelemetry(
+                    pid: 2_411 + hostOffset,
+                    command: "python3",
+                    cpuPercent: 118 + phase * 4.1,
+                    memoryPercent: 12.1
+                ),
+                ProcessTelemetry(
+                    pid: 1_830 + hostOffset,
+                    command: "ollama",
+                    cpuPercent: 46 + phase * 2.3,
+                    memoryPercent: 8.4
+                ),
+                ProcessTelemetry(
+                    pid: 4_208 + hostOffset,
+                    command: "ffmpeg",
+                    cpuPercent: 18 + phase,
+                    memoryPercent: 2.6
+                )
+            ],
+            network: NetworkTelemetry(
+                interfaceName: "eth0",
+                operstate: "up",
+                receiveBytesPerSecond: receiveBytesPerSecond,
+                transmitBytesPerSecond: transmitBytesPerSecond,
+                receiveErrors: 0,
+                transmitErrors: 0,
+                receiveDrops: 0,
+                transmitDrops: 0
+            )
         )
     }
 }

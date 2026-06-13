@@ -74,10 +74,120 @@ struct HostCardView: View {
                 }
             }
 
+            if telemetry.network != nil || !telemetry.topProcesses.isEmpty {
+                activityPanel(for: telemetry)
+            }
+
             ForEach(telemetry.gpus) { gpu in
                 gpuPanel(for: gpu)
             }
         }
+    }
+
+    private func activityPanel(for telemetry: HostTelemetry) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Divider()
+
+            Text("Activity")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            if let network = telemetry.network {
+                networkRow(for: network)
+            }
+
+            if !telemetry.topProcesses.isEmpty {
+                processRow(for: Array(telemetry.topProcesses.prefix(3)))
+            }
+        }
+    }
+
+    private func networkRow(for network: NetworkTelemetry) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                activityLabel("NET")
+                networkIdentity(for: network)
+                Spacer(minLength: 8)
+                networkMetric(label: "RX", value: RemoteInfoFormatters.bytesPerSecond(network.receiveBytesPerSecond))
+                networkMetric(label: "TX", value: RemoteInfoFormatters.bytesPerSecond(network.transmitBytesPerSecond))
+                networkMetric(label: "ERR", value: "\(network.errorCount + network.dropCount)")
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    activityLabel("NET")
+                    networkIdentity(for: network)
+                    Spacer(minLength: 8)
+                    networkMetric(label: "ERR", value: "\(network.errorCount + network.dropCount)")
+                }
+                HStack(spacing: 10) {
+                    networkMetric(label: "RX", value: RemoteInfoFormatters.bytesPerSecond(network.receiveBytesPerSecond))
+                    networkMetric(label: "TX", value: RemoteInfoFormatters.bytesPerSecond(network.transmitBytesPerSecond))
+                }
+                .padding(.leading, 38)
+            }
+        }
+    }
+
+    private func processRow(for processes: [ProcessTelemetry]) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                activityLabel("CPU")
+                ForEach(processes) { process in
+                    processText(for: process)
+                }
+            }
+
+            HStack(alignment: .top, spacing: 8) {
+                activityLabel("CPU")
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(processes) { process in
+                        processText(for: process)
+                    }
+                }
+            }
+        }
+    }
+
+    private func activityLabel(_ label: String) -> some View {
+        Text(label)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .frame(width: 30, alignment: .leading)
+            .lineLimit(1)
+    }
+
+    private func networkIdentity(for network: NetworkTelemetry) -> some View {
+        HStack(spacing: 4) {
+            Text(network.interfaceName)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+            Text(network.operstate)
+                .font(.caption2)
+                .foregroundStyle(network.operstate == "up" ? .green : .secondary)
+                .lineLimit(1)
+        }
+    }
+
+    private func networkMetric(label: String, value: String) -> some View {
+        HStack(spacing: 3) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+    }
+
+    private func processText(for process: ProcessTelemetry) -> some View {
+        Text("\(process.command) \(RemoteInfoFormatters.percent(process.cpuPercent))")
+            .font(.caption.monospacedDigit().weight(.semibold))
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .minimumScaleFactor(0.75)
     }
 
     private func gpuPanel(for gpu: GPUTelemetry) -> some View {

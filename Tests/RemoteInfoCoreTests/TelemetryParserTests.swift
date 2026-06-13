@@ -36,6 +36,19 @@ final class TelemetryParserTests: XCTestCase {
         XCTAssertEqual(telemetry.gpus[0].powerLimitWatts, 575)
         XCTAssertEqual(telemetry.gpus[0].fanSpeedPercent, 64)
         XCTAssertEqual(telemetry.gpus[0].graphicsClockMHz, 2_620)
+        XCTAssertEqual(telemetry.topProcesses.count, 2)
+        XCTAssertEqual(telemetry.topProcesses[0].pid, 2_411)
+        XCTAssertEqual(telemetry.topProcesses[0].command, "python3")
+        XCTAssertEqual(telemetry.topProcesses[0].cpuPercent, 216.4)
+        XCTAssertEqual(telemetry.topProcesses[0].memoryPercent, 12.1)
+        XCTAssertEqual(telemetry.topProcesses[1].command, "ollama")
+        let network = try XCTUnwrap(telemetry.network)
+        XCTAssertEqual(network.interfaceName, "eth0")
+        XCTAssertEqual(network.operstate, "up")
+        XCTAssertEqual(network.receiveBytesPerSecond, 18_398_656)
+        XCTAssertEqual(network.transmitBytesPerSecond, 3_355_443)
+        XCTAssertEqual(network.errorCount, 0)
+        XCTAssertEqual(network.dropCount, 0)
     }
 
     func testIgnoresUnknownKeys() throws {
@@ -190,6 +203,17 @@ final class TelemetryParserTests: XCTestCase {
         XCTAssertEqual(telemetry.gpus, [])
     }
 
+    func testAllowsOutputWithoutActivityLines() throws {
+        let telemetry = try TelemetryParser().parse(
+            systemOnlyOutput,
+            collectedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            latency: 0.2
+        )
+
+        XCTAssertEqual(telemetry.topProcesses, [])
+        XCTAssertNil(telemetry.network)
+    }
+
     func testReportsMalformedGPUValues() {
         let output = completeOutput.replacingOccurrences(of: "|88|", with: "|not-a-number|")
 
@@ -203,6 +227,40 @@ final class TelemetryParserTests: XCTestCase {
             XCTAssertEqual(
                 error as? TelemetryParseError,
                 .invalidNumber(key: "gpu.utilization_percent", value: "not-a-number")
+            )
+        }
+    }
+
+    func testReportsMalformedProcessValues() {
+        let output = completeOutput.replacingOccurrences(of: "|216.4|", with: "|bad|")
+
+        XCTAssertThrowsError(
+            try TelemetryParser().parse(
+                output,
+                collectedAt: Date(timeIntervalSince1970: 1_700_000_000),
+                latency: 0.2
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? TelemetryParseError,
+                .invalidNumber(key: "process.cpu_percent", value: "bad")
+            )
+        }
+    }
+
+    func testReportsMalformedNetworkValues() {
+        let output = completeOutput.replacingOccurrences(of: "|18398656|", with: "|bad|")
+
+        XCTAssertThrowsError(
+            try TelemetryParser().parse(
+                output,
+                collectedAt: Date(timeIntervalSince1970: 1_700_000_000),
+                latency: 0.2
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? TelemetryParseError,
+                .invalidNumber(key: "network.receive_bytes_per_second", value: "bad")
             )
         }
     }
@@ -230,6 +288,10 @@ final class TelemetryParserTests: XCTestCase {
         XCTAssertEqual(RemoteInfoFormatters.megahertzAsGigahertz(2_620), "2.62 GHz")
     }
 
+    func testRateFormatter() {
+        XCTAssertEqual(RemoteInfoFormatters.bytesPerSecond(18_398_656), "17.5 MB/s")
+    }
+
     private let completeOutput = """
     uptime_seconds=123456
     kernel_release=6.8.0-test
@@ -242,6 +304,9 @@ final class TelemetryParserTests: XCTestCase {
     root_used_bytes=77309411328
     root_total_bytes=107374182400
     gpu=0|NVIDIA GeForce RTX 5090|575.64|88|29800|32768|72|512|575|64|2620
+    process=2411|python3|216.4|12.1
+    process=1830|ollama|94.2|8.4
+    network=eth0|up|18398656|3355443|0|0|0|0
     """
 
     private let systemOnlyOutput = """

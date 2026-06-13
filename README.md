@@ -33,6 +33,10 @@ Remote Info uses `/usr/bin/ssh` and does not store keys or passwords.
 
 When `nvidia-smi` is available on a remote host, Remote Info collects GPU telemetry with `nvidia-smi --query-gpu`. No remote daemon is required. Hosts without NVIDIA telemetry still report system metrics; the GPU panel is omitted for those hosts.
 
+## Activity Telemetry
+
+Remote Info also shows the top CPU-consuming processes and the default network interface. Process telemetry uses `ps` short command names only, not full command lines or arguments. Network telemetry reads the default outbound interface and `/proc/net/dev` counters over the existing one-second sample window.
+
 ## Development
 
 Tests may require full Xcode rather than Command Line Tools. If `swift test` cannot import XCTest, use the `DEVELOPER_DIR` prefix.
