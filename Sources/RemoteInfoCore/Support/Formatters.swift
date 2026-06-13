@@ -2,7 +2,11 @@ import Foundation
 
 public enum RemoteInfoFormatters {
     public static func percent(_ value: Double) -> String {
-        "\(Int(value.rounded()))%"
+        guard value.isFinite else {
+            return "--"
+        }
+
+        return "\(Int(value.rounded()))%"
     }
 
     public static func bytes(_ value: Int64) -> String {

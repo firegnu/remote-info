@@ -3,6 +3,7 @@ import Foundation
 public enum TelemetryParseError: Error, Equatable, LocalizedError {
     case missingKey(String)
     case invalidLine(String)
+    case duplicateKey(String)
     case invalidNumber(key: String, value: String)
 
     public var errorDescription: String? {
@@ -11,6 +12,8 @@ public enum TelemetryParseError: Error, Equatable, LocalizedError {
             "Telemetry output is missing required key '\(key)'."
         case .invalidLine(let line):
             "Telemetry output contains an invalid line: '\(line)'."
+        case .duplicateKey(let key):
+            "Telemetry output contains duplicate key '\(key)'."
         case .invalidNumber(let key, let value):
             "Telemetry key '\(key)' has invalid numeric value '\(value)'."
         }
@@ -52,7 +55,12 @@ public struct TelemetryParser: Sendable {
             }
 
             let key = String(line[..<separatorIndex])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
             let value = String(line[line.index(after: separatorIndex)...])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if values[key] != nil {
+                throw TelemetryParseError.duplicateKey(key)
+            }
             values[key] = value
         }
 
@@ -84,7 +92,7 @@ public struct TelemetryParser: Sendable {
 
     private func doubleValue(_ key: String, in values: [String: String]) throws -> Double {
         let value = try stringValue(key, in: values)
-        guard let parsedValue = Double(value) else {
+        guard let parsedValue = Double(value), parsedValue.isFinite else {
             throw TelemetryParseError.invalidNumber(key: key, value: value)
         }
         return parsedValue

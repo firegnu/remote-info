@@ -87,6 +87,74 @@ final class TelemetryParserTests: XCTestCase {
         }
     }
 
+    func testRejectsNonFiniteDoubleValues() {
+        let output = """
+        uptime_seconds=123456
+        load1=nan
+        load5=0.38
+        load15=0.31
+        cpu_usage_percent=18.2
+        memory_used_bytes=4412346368
+        memory_total_bytes=10307921510
+        root_used_bytes=77309411328
+        root_total_bytes=107374182400
+        """
+
+        XCTAssertThrowsError(
+            try TelemetryParser().parse(
+                output,
+                collectedAt: Date(timeIntervalSince1970: 1_700_000_000),
+                latency: 0.2
+            )
+        ) { error in
+            XCTAssertEqual(error as? TelemetryParseError, .invalidNumber(key: "load1", value: "nan"))
+        }
+    }
+
+    func testTrimsWhitespaceAroundKeysAndValues() throws {
+        let output = """
+        uptime_seconds = 123456
+        load1 = 0.42
+        load5= 0.38
+        load15 =0.31
+        cpu_usage_percent = 18.2
+        memory_used_bytes = 4412346368
+        memory_total_bytes = 10307921510
+        root_used_bytes = 77309411328
+        root_total_bytes = 107374182400
+        """
+
+        let telemetry = try TelemetryParser().parse(
+            output,
+            collectedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            latency: 0.2
+        )
+
+        XCTAssertEqual(telemetry.load1, 0.42)
+        XCTAssertEqual(telemetry.load5, 0.38)
+        XCTAssertEqual(telemetry.load15, 0.31)
+    }
+
+    func testRejectsDuplicateKeys() {
+        let output = completeOutput + "\nload1=0.99\n"
+
+        XCTAssertThrowsError(
+            try TelemetryParser().parse(
+                output,
+                collectedAt: Date(timeIntervalSince1970: 1_700_000_000),
+                latency: 0.2
+            )
+        ) { error in
+            XCTAssertEqual(error as? TelemetryParseError, .duplicateKey("load1"))
+        }
+    }
+
+    func testPercentFormatterHandlesNonFiniteValues() {
+        XCTAssertEqual(RemoteInfoFormatters.percent(.nan), "--")
+        XCTAssertEqual(RemoteInfoFormatters.percent(.infinity), "--")
+        XCTAssertEqual(RemoteInfoFormatters.percent(-.infinity), "--")
+    }
+
     private let completeOutput = """
     uptime_seconds=123456
     load1=0.42
