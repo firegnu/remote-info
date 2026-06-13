@@ -13,6 +13,7 @@ final class TelemetryCollectorTests: XCTestCase {
         ) { host, script, timeoutSeconds in
             XCTAssertEqual(host, "remote-info-host-a")
             XCTAssertTrue(script.contains("/proc/stat"))
+            XCTAssertTrue(script.contains("uname -r"))
             XCTAssertEqual(timeoutSeconds, 5)
         }
         let collector = TelemetryCollector(sshRunner: runner)
@@ -20,6 +21,7 @@ final class TelemetryCollectorTests: XCTestCase {
         let telemetry = try await collector.collect(for: host)
 
         XCTAssertEqual(telemetry.cpuUsagePercent, 18.2)
+        XCTAssertEqual(telemetry.kernelRelease, "6.8.0-test")
         XCTAssertEqual(telemetry.latencySeconds, 0.25)
     }
 
@@ -53,6 +55,7 @@ final class TelemetryCollectorTests: XCTestCase {
 
     private let completeTelemetryOutput = """
     uptime_seconds=123456
+    kernel_release=6.8.0-test
     load1=0.42
     load5=0.38
     load15=0.31

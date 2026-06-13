@@ -76,6 +76,7 @@ final class TelemetryStoreTests: XCTestCase {
         HostTelemetry(
             collectedAt: Date(timeIntervalSince1970: 1_700_000_000),
             latencySeconds: 0.25,
+            kernelRelease: "6.8.0-test",
             uptimeSeconds: 123_456,
             load1: 0.42,
             load5: 0.38,

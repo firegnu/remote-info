@@ -14,6 +14,7 @@ final class TelemetryParserTests: XCTestCase {
 
         XCTAssertEqual(telemetry.collectedAt, collectedAt)
         XCTAssertEqual(telemetry.latencySeconds, latency)
+        XCTAssertEqual(telemetry.kernelRelease, "6.8.0-test")
         XCTAssertEqual(telemetry.uptimeSeconds, 123_456)
         XCTAssertEqual(telemetry.load1, 0.42)
         XCTAssertEqual(telemetry.load5, 0.38)
@@ -40,6 +41,7 @@ final class TelemetryParserTests: XCTestCase {
     func testReportsMissingRequiredKey() {
         let output = """
         uptime_seconds=123456
+        kernel_release=6.8.0-test
         load1=0.42
         load5=0.38
         load15=0.31
@@ -63,6 +65,7 @@ final class TelemetryParserTests: XCTestCase {
     func testReportsMalformedNumbers() {
         let output = """
         uptime_seconds=123456
+        kernel_release=6.8.0-test
         load1=not-a-number
         load5=0.38
         load15=0.31
@@ -104,6 +107,7 @@ final class TelemetryParserTests: XCTestCase {
     func testRejectsNonFiniteDoubleValues() {
         let output = """
         uptime_seconds=123456
+        kernel_release=6.8.0-test
         load1=nan
         load5=0.38
         load15=0.31
@@ -128,6 +132,7 @@ final class TelemetryParserTests: XCTestCase {
     func testTrimsWhitespaceAroundKeysAndValues() throws {
         let output = """
         uptime_seconds = 123456
+        kernel_release = 6.8.0-test
         load1 = 0.42
         load5= 0.38
         load15 =0.31
@@ -181,6 +186,7 @@ final class TelemetryParserTests: XCTestCase {
 
     private let completeOutput = """
     uptime_seconds=123456
+    kernel_release=6.8.0-test
     load1=0.42
     load5=0.38
     load15=0.31

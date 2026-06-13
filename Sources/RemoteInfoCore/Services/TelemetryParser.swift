@@ -33,6 +33,7 @@ public struct TelemetryParser: Sendable {
         return HostTelemetry(
             collectedAt: collectedAt,
             latencySeconds: latency,
+            kernelRelease: try stringValue("kernel_release", in: values),
             uptimeSeconds: try intValue("uptime_seconds", in: values),
             load1: try doubleValue("load1", in: values),
             load5: try doubleValue("load5", in: values),

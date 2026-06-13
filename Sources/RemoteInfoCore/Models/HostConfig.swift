@@ -24,6 +24,8 @@ public enum HostConfigError: Error, Equatable, LocalizedError {
     case fileMissing(URL)
     case expectedExactlyTwoHosts(actualCount: Int)
     case emptyField(String)
+    case duplicateHostID(String)
+    case placeholderField(field: String, value: String)
 
     public var errorDescription: String? {
         switch self {
@@ -33,6 +35,10 @@ public enum HostConfigError: Error, Equatable, LocalizedError {
             "Host configuration must contain exactly two hosts; found \(actualCount)."
         case .emptyField(let field):
             "Host configuration field '\(field)' must not be empty."
+        case .duplicateHostID(let id):
+            "Host configuration contains duplicate host id '\(id)'."
+        case .placeholderField(let field, let value):
+            "Host configuration field '\(field)' still contains placeholder value '\(value)'."
         }
     }
 }

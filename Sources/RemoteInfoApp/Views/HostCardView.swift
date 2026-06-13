@@ -66,6 +66,10 @@ struct HostCardView: View {
                 MetricView(label: "UPTIME", value: RemoteInfoFormatters.uptime(telemetry.uptimeSeconds))
                 MetricView(label: "SSH", value: RemoteInfoFormatters.latency(telemetry.latencySeconds))
             }
+            GridRow {
+                MetricView(label: "KERNEL", value: telemetry.kernelRelease)
+                    .gridCellColumns(3)
+            }
         }
     }
 

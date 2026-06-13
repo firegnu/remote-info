@@ -12,16 +12,16 @@ cp config/hosts.example.json ~/.config/remote-info/hosts.json
 chmod 600 ~/.config/remote-info/hosts.json
 ```
 
-Edit `~/.config/remote-info/hosts.json` locally so each `sshTarget` matches an SSH config alias or safe target name for your machine.
+Edit `~/.config/remote-info/hosts.json` locally so each `sshTarget` matches an SSH config alias or safe target name for your machine. The copied `CHANGE_ME_*` values are rejected by the app until you replace them.
 
-Test the placeholder aliases after editing your local SSH config:
+Test the configured aliases after editing your local SSH config:
 
 ```bash
-ssh -o BatchMode=yes remote-info-host-a true
-ssh -o BatchMode=yes remote-info-host-b true
+ssh -o BatchMode=yes your-host-a-alias true
+ssh -o BatchMode=yes your-host-b-alias true
 ```
 
-Do not copy the edited local config into this repo. If the config is missing or malformed, the app shows the configuration error and disables refresh instead of connecting to placeholder aliases.
+Do not copy the edited local config into this repo. If the config is missing, malformed, or still contains placeholders, the app shows the configuration error and disables refresh instead of connecting to those targets.
 
 ## Security
 

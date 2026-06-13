@@ -45,8 +45,10 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
     root_values="$(df -B1 / | awk 'NR==2 { print $3" "$2 }')"
     root_used_bytes="$(printf "%s" "$root_values" | awk '{ print $1 }')"
     root_total_bytes="$(printf "%s" "$root_values" | awk '{ print $2 }')"
+    kernel_release="$(uname -r)"
 
     printf 'uptime_seconds=%s\\n' "$uptime_seconds"
+    printf 'kernel_release=%s\\n' "$kernel_release"
     printf 'load1=%s\\n' "$load1"
     printf 'load5=%s\\n' "$load5"
     printf 'load15=%s\\n' "$load15"

@@ -3,6 +3,7 @@ import Foundation
 public struct HostTelemetry: Equatable, Sendable {
     public let collectedAt: Date
     public let latencySeconds: TimeInterval
+    public let kernelRelease: String
     public let uptimeSeconds: Int
     public let load1: Double
     public let load5: Double
@@ -16,6 +17,7 @@ public struct HostTelemetry: Equatable, Sendable {
     public init(
         collectedAt: Date,
         latencySeconds: TimeInterval,
+        kernelRelease: String,
         uptimeSeconds: Int,
         load1: Double,
         load5: Double,
@@ -28,6 +30,7 @@ public struct HostTelemetry: Equatable, Sendable {
     ) {
         self.collectedAt = collectedAt
         self.latencySeconds = latencySeconds
+        self.kernelRelease = kernelRelease
         self.uptimeSeconds = uptimeSeconds
         self.load1 = load1
         self.load5 = load5

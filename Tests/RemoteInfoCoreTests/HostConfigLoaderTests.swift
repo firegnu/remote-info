@@ -7,8 +7,8 @@ final class HostConfigLoaderTests: XCTestCase {
             """
             {
               "hosts": [
-                { "id": "host-a", "name": "Host A", "sshTarget": "remote-info-host-a" },
-                { "id": "host-b", "name": "Host B", "sshTarget": "remote-info-host-b" }
+                { "id": "host-a", "name": "Host A", "sshTarget": "test-host-a" },
+                { "id": "host-b", "name": "Host B", "sshTarget": "test-host-b" }
               ]
             }
             """
@@ -19,8 +19,8 @@ final class HostConfigLoaderTests: XCTestCase {
         XCTAssertEqual(
             hosts,
             [
-                HostConfig(id: "host-a", name: "Host A", sshTarget: "remote-info-host-a"),
-                HostConfig(id: "host-b", name: "Host B", sshTarget: "remote-info-host-b")
+                HostConfig(id: "host-a", name: "Host A", sshTarget: "test-host-a"),
+                HostConfig(id: "host-b", name: "Host B", sshTarget: "test-host-b")
             ]
         )
     }
@@ -30,7 +30,7 @@ final class HostConfigLoaderTests: XCTestCase {
             """
             {
               "hosts": [
-                { "id": "host-a", "name": "Host A", "sshTarget": "remote-info-host-a" }
+                { "id": "host-a", "name": "Host A", "sshTarget": "test-host-a" }
               ]
             }
             """
@@ -46,7 +46,7 @@ final class HostConfigLoaderTests: XCTestCase {
             """
             {
               "hosts": [
-                { "id": "host-a", "name": "Host A", "sshTarget": "remote-info-host-a" },
+                { "id": "host-a", "name": "Host A", "sshTarget": "test-host-a" },
                 { "id": "host-b", "name": "Host B", "sshTarget": "   " }
               ]
             }
@@ -55,6 +55,43 @@ final class HostConfigLoaderTests: XCTestCase {
 
         XCTAssertThrowsError(try HostConfigLoader().load(from: url)) { error in
             XCTAssertEqual(error as? HostConfigError, .emptyField("sshTarget"))
+        }
+    }
+
+    func testRejectsPlaceholderSSHTargets() throws {
+        let url = try writeTemporaryConfig(
+            """
+            {
+              "hosts": [
+                { "id": "host-a", "name": "Host A", "sshTarget": "CHANGE_ME_HOST_A" },
+                { "id": "host-b", "name": "Host B", "sshTarget": "test-host-b" }
+              ]
+            }
+            """
+        )
+
+        XCTAssertThrowsError(try HostConfigLoader().load(from: url)) { error in
+            XCTAssertEqual(
+                error as? HostConfigError,
+                .placeholderField(field: "sshTarget", value: "CHANGE_ME_HOST_A")
+            )
+        }
+    }
+
+    func testRejectsDuplicateHostIDs() throws {
+        let url = try writeTemporaryConfig(
+            """
+            {
+              "hosts": [
+                { "id": "host-a", "name": "Host A", "sshTarget": "test-host-a" },
+                { "id": "host-a", "name": "Host B", "sshTarget": "test-host-b" }
+              ]
+            }
+            """
+        )
+
+        XCTAssertThrowsError(try HostConfigLoader().load(from: url)) { error in
+            XCTAssertEqual(error as? HostConfigError, .duplicateHostID("host-a"))
         }
     }
 

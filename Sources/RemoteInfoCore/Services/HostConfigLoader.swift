@@ -30,16 +30,30 @@ public struct HostConfigLoader: Sendable {
             throw HostConfigError.expectedExactlyTwoHosts(actualCount: hosts.count)
         }
 
+        var seenIDs: Set<String> = []
         for host in hosts {
             try validateNonEmpty(host.id, field: "id")
             try validateNonEmpty(host.name, field: "name")
             try validateNonEmpty(host.sshTarget, field: "sshTarget")
+
+            let id = host.id.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard seenIDs.insert(id).inserted else {
+                throw HostConfigError.duplicateHostID(id)
+            }
+            try validateNotPlaceholder(host.sshTarget, field: "sshTarget")
         }
     }
 
     private func validateNonEmpty(_ value: String, field: String) throws {
         if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             throw HostConfigError.emptyField(field)
+        }
+    }
+
+    private func validateNotPlaceholder(_ value: String, field: String) throws {
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedValue.hasPrefix("CHANGE_ME") || trimmedValue.hasPrefix("remote-info-host-") {
+            throw HostConfigError.placeholderField(field: field, value: trimmedValue)
         }
     }
 }

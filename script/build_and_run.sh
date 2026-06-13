@@ -53,6 +53,13 @@ open_app() {
   /usr/bin/open -n "$APP_BUNDLE"
 }
 
+verify_bundle_metadata() {
+  [[ -x "$APP_BINARY" ]]
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$INFO_PLIST")" == "$APP_NAME" ]]
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$INFO_PLIST")" == "$BUNDLE_ID" ]]
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :LSUIElement' "$INFO_PLIST")" == "true" ]]
+}
+
 case "$MODE" in
   run)
     open_app
@@ -69,6 +76,7 @@ case "$MODE" in
     /usr/bin/log stream --info --style compact --predicate "subsystem == \"$BUNDLE_ID\""
     ;;
   --verify|verify)
+    verify_bundle_metadata
     open_app
     sleep 1
     pgrep -x "$APP_NAME" >/dev/null
