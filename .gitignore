@@ -1,2 +1,6 @@
 .superpowers/
 .worktrees/
+.build/
+dist/
+.DS_Store
+config/hosts.local.json
