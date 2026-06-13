@@ -40,6 +40,7 @@ public struct TelemetryParser: Sendable {
             load5: try doubleValue("load5", in: values),
             load15: try doubleValue("load15", in: values),
             cpuUsagePercent: try doubleValue("cpu_usage_percent", in: values),
+            cpuCoreCount: try intValue("cpu_core_count", in: values),
             memoryUsedBytes: try int64Value("memory_used_bytes", in: values),
             memoryTotalBytes: try int64Value("memory_total_bytes", in: values),
             rootUsedBytes: try int64Value("root_used_bytes", in: values),
@@ -144,9 +145,13 @@ public struct TelemetryParser: Sendable {
         }
 
         let fields = payload.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
-        guard fields.count == 8 else {
+        guard fields.count == 8 || fields.count == 11 || fields.count == 12 else {
             throw TelemetryParseError.invalidLine("network=\(payload)")
         }
+
+        let hasPublicIP = fields.count == 12
+        let hasLocation = fields.count >= 11
+        let locationOffset = hasPublicIP ? 9 : 8
 
         return NetworkTelemetry(
             interfaceName: fields[0],
@@ -156,7 +161,11 @@ public struct TelemetryParser: Sendable {
             receiveErrors: try int64Value("network.receive_errors", value: fields[4]),
             transmitErrors: try int64Value("network.transmit_errors", value: fields[5]),
             receiveDrops: try int64Value("network.receive_drops", value: fields[6]),
-            transmitDrops: try int64Value("network.transmit_drops", value: fields[7])
+            transmitDrops: try int64Value("network.transmit_drops", value: fields[7]),
+            publicIPAddress: hasPublicIP ? fields[8] : "",
+            publicIPCountryCode: hasLocation ? fields[locationOffset] : "",
+            publicIPRegion: hasLocation ? fields[locationOffset + 1] : "",
+            publicIPCity: hasLocation ? fields[locationOffset + 2] : ""
         )
     }
 

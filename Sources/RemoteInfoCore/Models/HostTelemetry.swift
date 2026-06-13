@@ -9,6 +9,7 @@ public struct HostTelemetry: Equatable, Sendable {
     public let load5: Double
     public let load15: Double
     public let cpuUsagePercent: Double
+    public let cpuCoreCount: Int
     public let memoryUsedBytes: Int64
     public let memoryTotalBytes: Int64
     public let rootUsedBytes: Int64
@@ -26,6 +27,7 @@ public struct HostTelemetry: Equatable, Sendable {
         load5: Double,
         load15: Double,
         cpuUsagePercent: Double,
+        cpuCoreCount: Int = 0,
         memoryUsedBytes: Int64,
         memoryTotalBytes: Int64,
         rootUsedBytes: Int64,
@@ -42,6 +44,7 @@ public struct HostTelemetry: Equatable, Sendable {
         self.load5 = load5
         self.load15 = load15
         self.cpuUsagePercent = cpuUsagePercent
+        self.cpuCoreCount = cpuCoreCount
         self.memoryUsedBytes = memoryUsedBytes
         self.memoryTotalBytes = memoryTotalBytes
         self.rootUsedBytes = rootUsedBytes

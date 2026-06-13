@@ -7,8 +7,8 @@ final class TelemetryStoreTests: XCTestCase {
         XCTAssertEqual(TelemetryStore.defaultPeriodicRefreshInterval, 1_800)
     }
 
-    func testDefaultStaleTelemetryIntervalIsTenMinutes() {
-        XCTAssertEqual(TelemetryStore.defaultStaleTelemetryInterval, 600)
+    func testDefaultStaleTelemetryIntervalIsOneHour() {
+        XCTAssertEqual(TelemetryStore.defaultStaleTelemetryInterval, 3_600)
     }
 
     func testRefreshAllUpdatesHostsIndependently() async {
@@ -63,7 +63,7 @@ final class TelemetryStoreTests: XCTestCase {
         let store = TelemetryStore(hosts: hosts, collector: collector)
 
         await store.refreshAll()
-        store.updateStaleStatuses(asOf: Date(timeIntervalSince1970: 1_700_000_700))
+        store.updateStaleStatuses(asOf: Date(timeIntervalSince1970: 1_700_003_700))
 
         XCTAssertEqual(store.hostStates[0].status, .stale)
         XCTAssertEqual(store.hostStates[1].status, .online)
@@ -82,7 +82,7 @@ final class TelemetryStoreTests: XCTestCase {
         let store = TelemetryStore(hosts: hosts, collector: collector)
 
         await store.refreshAll()
-        store.updateStaleStatuses(asOf: Date(timeIntervalSince1970: 1_700_000_700))
+        store.updateStaleStatuses(asOf: Date(timeIntervalSince1970: 1_700_003_700))
         await store.refreshAll()
 
         XCTAssertEqual(store.hostStates[0].status, .online)

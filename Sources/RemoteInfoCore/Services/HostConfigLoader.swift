@@ -30,8 +30,8 @@ public struct HostConfigLoader: HostConfigLoading, Sendable {
     }
 
     private func validate(_ hosts: [HostConfig]) throws {
-        guard hosts.count == 2 else {
-            throw HostConfigError.expectedExactlyTwoHosts(actualCount: hosts.count)
+        guard !hosts.isEmpty else {
+            throw HostConfigError.expectedAtLeastOneHost
         }
 
         var seenIDs: Set<String> = []

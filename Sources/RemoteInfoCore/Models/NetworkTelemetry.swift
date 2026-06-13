@@ -9,6 +9,10 @@ public struct NetworkTelemetry: Equatable, Sendable {
     public let transmitErrors: Int64
     public let receiveDrops: Int64
     public let transmitDrops: Int64
+    public let publicIPAddress: String
+    public let publicIPCountryCode: String
+    public let publicIPRegion: String
+    public let publicIPCity: String
 
     public init(
         interfaceName: String,
@@ -18,7 +22,11 @@ public struct NetworkTelemetry: Equatable, Sendable {
         receiveErrors: Int64,
         transmitErrors: Int64,
         receiveDrops: Int64,
-        transmitDrops: Int64
+        transmitDrops: Int64,
+        publicIPAddress: String = "",
+        publicIPCountryCode: String = "",
+        publicIPRegion: String = "",
+        publicIPCity: String = ""
     ) {
         self.interfaceName = interfaceName
         self.operstate = operstate
@@ -28,6 +36,10 @@ public struct NetworkTelemetry: Equatable, Sendable {
         self.transmitErrors = transmitErrors
         self.receiveDrops = receiveDrops
         self.transmitDrops = transmitDrops
+        self.publicIPAddress = publicIPAddress
+        self.publicIPCountryCode = publicIPCountryCode
+        self.publicIPRegion = publicIPRegion
+        self.publicIPCity = publicIPCity
     }
 
     public var errorCount: Int64 {

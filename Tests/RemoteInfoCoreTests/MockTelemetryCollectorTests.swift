@@ -9,6 +9,7 @@ final class MockTelemetryCollectorTests: XCTestCase {
 
         XCTAssertEqual(telemetry.kernelRelease, "6.8.0-mock")
         XCTAssertGreaterThan(telemetry.cpuUsagePercent, 0)
+        XCTAssertEqual(telemetry.cpuCoreCount, 32)
         XCTAssertGreaterThan(telemetry.memoryTotalBytes, telemetry.memoryUsedBytes)
         XCTAssertGreaterThan(telemetry.rootTotalBytes, telemetry.rootUsedBytes)
         XCTAssertEqual(telemetry.gpus.count, 1)
@@ -22,6 +23,9 @@ final class MockTelemetryCollectorTests: XCTestCase {
         XCTAssertEqual(network.interfaceName, "eth0")
         XCTAssertEqual(network.operstate, "up")
         XCTAssertGreaterThan(network.receiveBytesPerSecond, 0)
+        XCTAssertEqual(network.publicIPAddress, "203.0.113.10")
+        XCTAssertEqual(network.publicIPCountryCode, "JP")
+        XCTAssertEqual(network.publicIPRegion, "Tokyo")
     }
 
     func testTelemetryChangesAcrossCollections() async throws {

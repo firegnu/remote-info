@@ -6,37 +6,40 @@ struct MenuBarPanelView: View {
     let configurationError: String?
     let refreshEnabled: Bool
     let isMockMode: Bool
+    @State private var selectedHostID: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(spacing: 0) {
             header
 
-            if isMockMode {
-                mockModeView
-            }
+            VStack(spacing: 6) {
+                if isMockMode {
+                    mockModeView
+                }
 
-            if let configurationError {
-                configurationErrorView(configurationError)
-            }
-
-            FleetSummaryView(hostStates: store.hostStates)
-
-            VStack(spacing: 10) {
-                ForEach(store.hostStates) { state in
-                    HostCardView(state: state)
+                if let configurationError {
+                    configurationErrorView(configurationError)
                 }
             }
+            .padding(.horizontal, 14)
+            .padding(.bottom, isMockMode || configurationError != nil ? 10 : 0)
 
             Divider()
 
-            footer
+            HStack(spacing: 0) {
+                hostSidebar
+                    .padding(.leading, 10)
+                    .padding(.vertical, 10)
+                    .padding(.trailing, 8)
+
+                detailPane
+            }
         }
-        .padding(16)
-        .frame(width: 420)
+        .frame(width: 820, height: 762)
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Remote Info")
                     .font(.headline)
@@ -47,6 +50,8 @@ struct MenuBarPanelView: View {
             }
 
             Spacer()
+
+            FleetSummaryView(hostStates: store.hostStates)
 
             Button {
                 if refreshEnabled {
@@ -62,6 +67,8 @@ struct MenuBarPanelView: View {
             .disabled(!refreshEnabled || store.hostStates.contains { $0.isRefreshing })
             .help("Refresh")
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
     }
 
     private var footer: some View {
@@ -79,6 +86,91 @@ struct MenuBarPanelView: View {
             }
             .controlSize(.small)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    private var hostSidebar: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Hosts")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+
+                Spacer()
+
+                Text("Worst first")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 11)
+            .padding(.bottom, 8)
+
+            ScrollView {
+                LazyVStack(spacing: 6) {
+                    ForEach(sortedHostStates) { state in
+                        HostListRowView(
+                            state: state,
+                            isSelected: state.id == currentSelectedHostID
+                        ) {
+                            selectedHostID = state.id
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 10)
+            }
+
+            Divider()
+
+            footer
+        }
+        .frame(width: 270)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+    }
+
+    @ViewBuilder
+    private var detailPane: some View {
+        if let selectedState {
+            HostCardView(state: selectedState, showsContainer: false)
+                .padding(10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        } else {
+            ContentUnavailableView(
+                "No Hosts",
+                systemImage: "server.rack",
+                description: Text("Add at least one host to ~/.config/remote-info/hosts.json.")
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var sortedHostStates: [HostState] {
+        store.hostStates.sorted { lhs, rhs in
+            if lhs.displaySeverity.displayPriority == rhs.displaySeverity.displayPriority {
+                return lhs.host.name.localizedStandardCompare(rhs.host.name) == .orderedAscending
+            }
+            return lhs.displaySeverity.displayPriority > rhs.displaySeverity.displayPriority
+        }
+    }
+
+    private var selectedState: HostState? {
+        if let selectedHostID,
+           let state = store.hostStates.first(where: { $0.id == selectedHostID }) {
+            return state
+        }
+
+        return sortedHostStates.first
+    }
+
+    private var currentSelectedHostID: String? {
+        selectedState?.id
     }
 
     private var mockModeView: some View {

@@ -60,6 +60,46 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
       }' /proc/net/dev 2>/dev/null
     }
 
+    sanitize_location_field() {
+      printf '%s' "$1" | tr '\\n\\r|' '   ' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+    }
+
+    json_string_value() {
+      key="$1"
+      awk -F '"' -v key="$key" '$0 ~ "\\\"" key "\\\"[[:space:]]*:" { print $4; exit }'
+    }
+
+    read_public_ip_json() {
+      for url in https://ifconfig.co/json https://ipapi.co/json/ https://ipinfo.io/json https://ipwho.is/; do
+        response="$(curl -fsS --connect-timeout 1 --max-time 2 "$url" 2>/dev/null || true)"
+        if [ -n "$response" ]; then
+          printf '%s' "$response"
+          return 0
+        fi
+      done
+    }
+
+    read_public_ip_plain() {
+      for url in https://api.ipify.org https://api64.ipify.org; do
+        response="$(curl -fsS --connect-timeout 1 --max-time 2 "$url" 2>/dev/null || true)"
+        if [ -n "$response" ]; then
+          printf '%s' "$response"
+          return 0
+        fi
+      done
+    }
+
+    read_public_ip_location_json() {
+      public_ip_address="$1"
+      for url in https://ipinfo.io/$public_ip_address/json https://ipwho.is/$public_ip_address; do
+        response="$(curl -fsS --connect-timeout 1 --max-time 2 "$url" 2>/dev/null || true)"
+        if [ -n "$response" ]; then
+          printf '%s' "$response"
+          return 0
+        fi
+      done
+    }
+
     network_interfaces="$(read_physical_interfaces | awk 'NF { printf "%s%s", separator, $1; separator=" " }')"
     network_label=""
     network_before=""
@@ -93,12 +133,13 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
       if (total_delta <= 0) {
         print "0";
       } else {
-        printf "%.1f", (100 * (total_delta-idle_delta) / total_delta);
+        printf "%.2f", (100 * (total_delta-idle_delta) / total_delta);
       }
     }')"
 
     uptime_seconds="$(awk '{ printf "%d", $1 }' /proc/uptime)"
     read load1 load5 load15 _ < /proc/loadavg
+    cpu_core_count="$(nproc 2>/dev/null || awk '/^processor[[:space:]]*:/ { count++ } END { print count + 0 }' /proc/cpuinfo 2>/dev/null || printf '0')"
     memory_total_bytes="$(awk '/^MemTotal:/ { printf "%.0f", $2 * 1024 }' /proc/meminfo)"
     memory_available_bytes="$(awk '/^MemAvailable:/ { printf "%.0f", $2 * 1024 }' /proc/meminfo)"
     memory_used_bytes="$(awk -v total="$memory_total_bytes" -v available="$memory_available_bytes" 'BEGIN { printf "%.0f", total - available }')"
@@ -106,6 +147,54 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
     root_used_bytes="$(printf "%s" "$root_values" | awk '{ print $1 }')"
     root_total_bytes="$(printf "%s" "$root_values" | awk '{ print $2 }')"
     kernel_release="$(uname -r)"
+    public_ip_address=""
+    public_ip_country=""
+    public_ip_region=""
+    public_ip_city=""
+    if command -v curl >/dev/null 2>&1; then
+      public_ip_json="$(read_public_ip_json || true)"
+      if [ -n "$public_ip_json" ]; then
+        public_ip_address="$(printf '%s' "$public_ip_json" | json_string_value ip)"
+        public_ip_country="$(printf '%s' "$public_ip_json" | json_string_value country_code)"
+        if [ -z "$public_ip_country" ]; then
+          public_ip_country="$(printf '%s' "$public_ip_json" | json_string_value country_iso)"
+        fi
+        if [ -z "$public_ip_country" ]; then
+          public_ip_country="$(printf '%s' "$public_ip_json" | json_string_value country)"
+        fi
+        public_ip_region="$(printf '%s' "$public_ip_json" | json_string_value region)"
+        if [ -z "$public_ip_region" ]; then
+          public_ip_region="$(printf '%s' "$public_ip_json" | json_string_value region_name)"
+        fi
+        public_ip_city="$(printf '%s' "$public_ip_json" | json_string_value city)"
+      fi
+      if [ -z "$public_ip_address" ]; then
+        public_ip_address="$(read_public_ip_plain || true)"
+      fi
+      if [ -n "$public_ip_address" ] && [ -z "$public_ip_region" ] && [ -z "$public_ip_city" ]; then
+        public_ip_json="$(read_public_ip_location_json "$public_ip_address" || true)"
+        if [ -n "$public_ip_json" ]; then
+          if [ -z "$public_ip_country" ]; then
+            public_ip_country="$(printf '%s' "$public_ip_json" | json_string_value country_code)"
+          fi
+          if [ -z "$public_ip_country" ]; then
+            public_ip_country="$(printf '%s' "$public_ip_json" | json_string_value country_iso)"
+          fi
+          if [ -z "$public_ip_country" ]; then
+            public_ip_country="$(printf '%s' "$public_ip_json" | json_string_value country)"
+          fi
+          public_ip_region="$(printf '%s' "$public_ip_json" | json_string_value region)"
+          if [ -z "$public_ip_region" ]; then
+            public_ip_region="$(printf '%s' "$public_ip_json" | json_string_value region_name)"
+          fi
+          public_ip_city="$(printf '%s' "$public_ip_json" | json_string_value city)"
+        fi
+      fi
+    fi
+    public_ip_address="$(sanitize_location_field "$public_ip_address")"
+    public_ip_country="$(sanitize_location_field "$public_ip_country")"
+    public_ip_region="$(sanitize_location_field "$public_ip_region")"
+    public_ip_city="$(sanitize_location_field "$public_ip_city")"
     network_line=""
     if [ -n "$network_interfaces" ] && [ -n "$network_before" ] && [ -n "$network_after" ]; then
       network_state="down"
@@ -119,7 +208,7 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
           network_state="unknown"
         fi
       done
-      network_line="$(awk -v iface="$network_label" -v state="$network_state" -v before="$network_before" -v after="$network_after" '
+      network_line="$(awk -v iface="$network_label" -v state="$network_state" -v before="$network_before" -v after="$network_after" -v ip="$public_ip_address" -v country="$public_ip_country" -v region="$public_ip_region" -v city="$public_ip_city" '
     BEGIN {
       split(before, b, " ");
       split(after, a, " ");
@@ -131,7 +220,7 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
       if (transmit_delta < 0) {
         transmit_delta=0;
       }
-      printf "network=%s|%s|%.0f|%.0f|%.0f|%.0f|%.0f|%.0f\\n", iface, state, receive_delta, transmit_delta, a[3], a[4], a[5], a[6];
+      printf "network=%s|%s|%.0f|%.0f|%.0f|%.0f|%.0f|%.0f|%s|%s|%s|%s\\n", iface, state, receive_delta, transmit_delta, a[3], a[4], a[5], a[6], ip, country, region, city;
     }')"
     fi
 
@@ -141,6 +230,7 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
     printf 'load5=%s\\n' "$load5"
     printf 'load15=%s\\n' "$load15"
     printf 'cpu_usage_percent=%s\\n' "$cpu_usage_percent"
+    printf 'cpu_core_count=%s\\n' "$cpu_core_count"
     printf 'memory_used_bytes=%s\\n' "$memory_used_bytes"
     printf 'memory_total_bytes=%s\\n' "$memory_total_bytes"
     printf 'root_used_bytes=%s\\n' "$root_used_bytes"
@@ -150,7 +240,7 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
       printf '%s\\n' "$network_line"
     fi
     ps -eo pid=,comm=,pcpu=,pmem= --sort=-pcpu 2>/dev/null |
-    awk 'NR <= 3 {
+    awk 'NR <= 5 {
       gsub(/[|]/, "/", $2);
       printf "process=%s|%s|%s|%s\\n", $1, $2, $3, $4
     }'

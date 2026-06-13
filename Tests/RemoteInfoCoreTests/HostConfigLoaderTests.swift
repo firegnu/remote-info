@@ -2,13 +2,14 @@
 import XCTest
 
 final class HostConfigLoaderTests: XCTestCase {
-    func testLoadsTwoHostsFromJSON() throws {
+    func testLoadsHostsFromJSON() throws {
         let url = try writeTemporaryConfig(
             """
             {
               "hosts": [
                 { "id": "host-a", "name": "Host A", "sshTarget": "test-host-a" },
-                { "id": "host-b", "name": "Host B", "sshTarget": "test-host-b" }
+                { "id": "host-b", "name": "Host B", "sshTarget": "test-host-b" },
+                { "id": "host-c", "name": "Host C", "sshTarget": "test-host-c" }
               ]
             }
             """
@@ -20,24 +21,23 @@ final class HostConfigLoaderTests: XCTestCase {
             hosts,
             [
                 HostConfig(id: "host-a", name: "Host A", sshTarget: "test-host-a"),
-                HostConfig(id: "host-b", name: "Host B", sshTarget: "test-host-b")
+                HostConfig(id: "host-b", name: "Host B", sshTarget: "test-host-b"),
+                HostConfig(id: "host-c", name: "Host C", sshTarget: "test-host-c")
             ]
         )
     }
 
-    func testRejectsConfigsThatDoNotContainExactlyTwoHosts() throws {
+    func testRejectsConfigsThatDoNotContainAnyHosts() throws {
         let url = try writeTemporaryConfig(
             """
             {
-              "hosts": [
-                { "id": "host-a", "name": "Host A", "sshTarget": "test-host-a" }
-              ]
+              "hosts": []
             }
             """
         )
 
         XCTAssertThrowsError(try HostConfigLoader().load(from: url)) { error in
-            XCTAssertEqual(error as? HostConfigError, .expectedExactlyTwoHosts(actualCount: 1))
+            XCTAssertEqual(error as? HostConfigError, .expectedAtLeastOneHost)
         }
     }
 

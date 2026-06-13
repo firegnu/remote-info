@@ -22,7 +22,7 @@ public struct HostConfigFile: Codable, Equatable, Sendable {
 
 public enum HostConfigError: Error, Equatable, LocalizedError {
     case fileMissing(URL)
-    case expectedExactlyTwoHosts(actualCount: Int)
+    case expectedAtLeastOneHost
     case emptyField(String)
     case duplicateHostID(String)
     case placeholderField(field: String, value: String)
@@ -31,8 +31,8 @@ public enum HostConfigError: Error, Equatable, LocalizedError {
         switch self {
         case .fileMissing(let url):
             "Host configuration file is missing at \(url.path)."
-        case .expectedExactlyTwoHosts(let actualCount):
-            "Host configuration must contain exactly two hosts; found \(actualCount)."
+        case .expectedAtLeastOneHost:
+            "Host configuration must contain at least one host."
         case .emptyField(let field):
             "Host configuration field '\(field)' must not be empty."
         case .duplicateHostID(let id):

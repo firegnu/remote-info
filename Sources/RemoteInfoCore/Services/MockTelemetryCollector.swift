@@ -35,6 +35,7 @@ public actor MockTelemetryCollector: TelemetryCollecting {
             load5: 0.42 + phase * 0.04,
             load15: 0.48 + phase * 0.025,
             cpuUsagePercent: 12 + phase * 2.3,
+            cpuCoreCount: 32,
             memoryUsedBytes: Int64(Double(memoryTotalBytes) * memoryUsageRatio),
             memoryTotalBytes: memoryTotalBytes,
             rootUsedBytes: Int64(Double(rootTotalBytes) * rootUsageRatio),
@@ -72,6 +73,18 @@ public actor MockTelemetryCollector: TelemetryCollecting {
                     command: "ffmpeg",
                     cpuPercent: 18 + phase,
                     memoryPercent: 2.6
+                ),
+                ProcessTelemetry(
+                    pid: 4_495 + hostOffset,
+                    command: "v2rayN",
+                    cpuPercent: 0.3 + phase * 0.02,
+                    memoryPercent: 0.6
+                ),
+                ProcessTelemetry(
+                    pid: 4_809 + hostOffset,
+                    command: "java",
+                    cpuPercent: 0.1 + phase * 0.01,
+                    memoryPercent: 1.3
                 )
             ],
             network: NetworkTelemetry(
@@ -82,7 +95,11 @@ public actor MockTelemetryCollector: TelemetryCollecting {
                 receiveErrors: 0,
                 transmitErrors: 0,
                 receiveDrops: 0,
-                transmitDrops: 0
+                transmitDrops: 0,
+                publicIPAddress: hostOffset == 0 ? "203.0.113.10" : "198.51.100.23",
+                publicIPCountryCode: hostOffset == 0 ? "JP" : "CN",
+                publicIPRegion: hostOffset == 0 ? "Tokyo" : "Shaanxi",
+                publicIPCity: hostOffset == 0 ? "Tokyo" : "Xi'an"
             )
         )
     }

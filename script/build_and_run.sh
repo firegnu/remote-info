@@ -21,8 +21,13 @@ DIST_DIR="$ROOT_DIR/dist"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
+APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_BINARY="$APP_MACOS/$APP_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
+APP_ICON_NAME="AppIcon.icns"
+APP_ICON_SOURCE="$ROOT_DIR/Resources/$APP_ICON_NAME"
+INSTALL_DIR="/Applications"
+INSTALLED_APP_BUNDLE="$INSTALL_DIR/$APP_NAME.app"
 
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 
@@ -30,15 +35,21 @@ swift build
 BUILD_BINARY="$(swift build --show-bin-path)/$APP_NAME"
 
 rm -rf "$APP_BUNDLE"
-mkdir -p "$APP_MACOS"
+mkdir -p "$APP_MACOS" "$APP_RESOURCES"
 cp "$BUILD_BINARY" "$APP_BINARY"
 chmod +x "$APP_BINARY"
+
+if [[ -f "$APP_ICON_SOURCE" ]]; then
+  cp "$APP_ICON_SOURCE" "$APP_RESOURCES/$APP_ICON_NAME"
+fi
 
 cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <key>CFBundleIconFile</key>
+  <string>${APP_ICON_NAME%.icns}</string>
   <key>CFBundleExecutable</key>
   <string>$APP_NAME</string>
   <key>CFBundleIdentifier</key>
@@ -60,10 +71,12 @@ cat >"$INFO_PLIST" <<PLIST
 PLIST
 
 open_app() {
+  local bundle_path="${1:-$APP_BUNDLE}"
+
   if [[ "$MOCK_MODE" == "1" ]]; then
-    /usr/bin/open --env "$MOCK_MODE_ENV_KEY=1" -n "$APP_BUNDLE"
+    /usr/bin/open --env "$MOCK_MODE_ENV_KEY=1" -n "$bundle_path"
   else
-    /usr/bin/open -n "$APP_BUNDLE"
+    /usr/bin/open -n "$bundle_path"
   fi
 }
 
@@ -71,7 +84,18 @@ verify_bundle_metadata() {
   [[ -x "$APP_BINARY" ]]
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$INFO_PLIST")" == "$APP_NAME" ]]
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$INFO_PLIST")" == "$BUNDLE_ID" ]]
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$INFO_PLIST")" == "${APP_ICON_NAME%.icns}" ]]
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :LSUIElement' "$INFO_PLIST")" == "true" ]]
+  [[ -f "$APP_RESOURCES/$APP_ICON_NAME" ]]
+}
+
+install_app() {
+  verify_bundle_metadata
+
+  rm -rf "$INSTALLED_APP_BUNDLE"
+  cp -R "$APP_BUNDLE" "$INSTALL_DIR/"
+  xattr -dr com.apple.quarantine "$INSTALLED_APP_BUNDLE" >/dev/null 2>&1 || true
+  [[ -x "$INSTALLED_APP_BUNDLE/Contents/MacOS/$APP_NAME" ]]
 }
 
 case "$MODE" in
@@ -95,8 +119,14 @@ case "$MODE" in
     sleep 1
     pgrep -x "$APP_NAME" >/dev/null
     ;;
+  --install|install)
+    install_app
+    open_app "$INSTALLED_APP_BUNDLE"
+    sleep 1
+    pgrep -x "$APP_NAME" >/dev/null
+    ;;
   *)
-    echo "usage: $0 [run|--mock|--debug|--logs|--telemetry|--verify]" >&2
+    echo "usage: $0 [run|--mock|--debug|--logs|--telemetry|--verify|--install]" >&2
     exit 2
     ;;
 esac

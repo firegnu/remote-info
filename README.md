@@ -1,6 +1,6 @@
 # Remote Info
 
-Remote Info is a native SwiftUI macOS menu bar app for viewing information from two Linux hosts through direct SSH.
+Remote Info is a native SwiftUI macOS menu bar app for viewing information from Linux hosts through direct SSH.
 
 ## Host Configuration
 
@@ -39,7 +39,7 @@ Remote Info also shows the top CPU-consuming processes and physical network thro
 
 ## Refresh Behavior
 
-Remote Info refreshes once when the app starts, then refreshes every thirty minutes. Opening the menu bar panel does not force a refresh; use the refresh button for an on-demand update. The two configured hosts are collected concurrently. Successful telemetry older than ten minutes is marked stale until a later successful refresh replaces it.
+Remote Info refreshes once when the app starts, then refreshes every thirty minutes. Opening the menu bar panel does not force a refresh; use the refresh button for an on-demand update. Configured hosts are collected concurrently. Successful telemetry older than one hour is marked stale until a later successful refresh replaces it.
 
 ## Development
 
