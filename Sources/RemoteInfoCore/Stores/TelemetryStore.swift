@@ -74,12 +74,20 @@ public final class TelemetryStore: ObservableObject {
     public func startPeriodicRefresh(every seconds: TimeInterval = 60) {
         stopPeriodicRefresh()
 
+        guard seconds > 0 else {
+            return
+        }
+
         periodicRefreshTask = Task { [weak self] in
             while !Task.isCancelled {
-                await self?.refreshAll()
-
-                let nanoseconds = UInt64(max(0, seconds) * 1_000_000_000)
+                let nanoseconds = UInt64(seconds * 1_000_000_000)
                 try? await Task.sleep(nanoseconds: nanoseconds)
+
+                if Task.isCancelled {
+                    break
+                }
+
+                await self?.refreshAll()
             }
         }
     }

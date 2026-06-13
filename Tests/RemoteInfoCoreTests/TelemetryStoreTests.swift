@@ -46,6 +46,25 @@ final class TelemetryStoreTests: XCTestCase {
         XCTAssertEqual(store.hostStates[1].telemetry?.cpuUsagePercent, 30)
     }
 
+    func testPeriodicRefreshSleepsBeforeRefreshing() async throws {
+        let collector = FakeTelemetryCollector()
+        collector.enqueue([
+            "host-a": .success(sampleTelemetry(cpuUsagePercent: 10)),
+            "host-b": .success(sampleTelemetry(cpuUsagePercent: 20))
+        ])
+        let store = TelemetryStore(hosts: hosts, collector: collector)
+
+        store.startPeriodicRefresh(every: 0.05)
+        try await Task.sleep(nanoseconds: 10_000_000)
+
+        XCTAssertEqual(collector.collectCount, 0)
+
+        try await Task.sleep(nanoseconds: 80_000_000)
+
+        XCTAssertEqual(collector.collectCount, 2)
+        store.stopPeriodicRefresh()
+    }
+
     private var hosts: [HostConfig] {
         [
             HostConfig(id: "host-a", name: "Host A", sshTarget: "remote-info-host-a"),
@@ -75,12 +94,15 @@ private final class FakeTelemetryCollector: TelemetryCollecting {
     private var queuedResults: [[String: Result<HostTelemetry, Error>]] = []
     private var activeResults: [String: Result<HostTelemetry, Error>]?
     private var remainingActiveResults = 0
+    private(set) var collectCount = 0
 
     func enqueue(_ results: [String: Result<HostTelemetry, Error>]) {
         queuedResults.append(results)
     }
 
     func collect(for host: HostConfig) async throws -> HostTelemetry {
+        collectCount += 1
+
         if activeResults == nil, !queuedResults.isEmpty {
             activeResults = queuedResults.removeFirst()
             remainingActiveResults = activeResults?.count ?? 0
