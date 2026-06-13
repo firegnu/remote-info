@@ -6,11 +6,14 @@ Remote Info is a personal macOS menu bar app for checking the health of two remo
 
 The first version uses direct SSH collection. The Linux hosts do not need an installed agent, open monitoring port, or Prometheus setup.
 
+The app must be a native macOS app built with Swift and SwiftUI, using native system menu bar and window/panel APIs. Electron, Tauri, React Native, web dashboards, WebView shells, and browser-based UI are out of scope.
+
 ## Product Scope
 
 ### In Scope
 
 - A menu-bar-only macOS app.
+- Native Swift/SwiftUI implementation.
 - A polished popover/window panel opened from the menu bar icon.
 - Two configured Linux hosts.
 - Direct SSH telemetry collection through `/usr/bin/ssh`.
@@ -33,6 +36,7 @@ The first version uses direct SSH collection. The Linux hosts do not need an ins
 ### Out Of Scope
 
 - App Store packaging and review requirements.
+- Electron, Tauri, React Native, WebView shells, or browser-based dashboards.
 - Username/password login UI.
 - Saving SSH credentials inside the app.
 - Installing a remote Linux agent.
@@ -60,7 +64,7 @@ The panel should be useful at a glance. It should not become a miniature Grafana
 
 ## Architecture
 
-Use a SwiftUI macOS app with focused files and explicit boundaries.
+Use a native Swift/SwiftUI macOS app with focused files and explicit boundaries.
 
 Expected structure:
 
