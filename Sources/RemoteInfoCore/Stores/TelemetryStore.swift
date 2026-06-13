@@ -63,13 +63,40 @@ public final class TelemetryStore: ObservableObject {
 
     public func refreshAll() async {
         lastRefreshStartedAt = Date()
-
-        for index in hostStates.indices {
+        let refreshRequests = hostStates.indices.compactMap { index -> HostRefreshRequest? in
             if hostStates[index].isRefreshing {
-                continue
+                return nil
             }
 
-            await refreshHost(at: index)
+            hostStates[index].isRefreshing = true
+            hostStates[index].status = .loading
+            return HostRefreshRequest(index: index, host: hostStates[index].host)
+        }
+
+        let collector = collector
+        await withTaskGroup(of: HostRefreshResult.self) { group in
+            for request in refreshRequests {
+                group.addTask {
+                    do {
+                        let telemetry = try await collector.collect(for: request.host)
+                        return HostRefreshResult(index: request.index, outcome: .success(telemetry))
+                    } catch {
+                        return HostRefreshResult(index: request.index, outcome: .failure(error.localizedDescription))
+                    }
+                }
+            }
+
+            for await result in group {
+                switch result.outcome {
+                case .success(let telemetry):
+                    hostStates[result.index].telemetry = telemetry
+                    hostStates[result.index].status = .online
+                case .failure(let message):
+                    hostStates[result.index].status = .offline(message)
+                }
+
+                hostStates[result.index].isRefreshing = false
+            }
         }
     }
 
@@ -99,18 +126,19 @@ public final class TelemetryStore: ObservableObject {
         periodicRefreshTask = nil
     }
 
-    private func refreshHost(at index: Int) async {
-        hostStates[index].isRefreshing = true
-        hostStates[index].status = .loading
+}
 
-        do {
-            let telemetry = try await collector.collect(for: hostStates[index].host)
-            hostStates[index].telemetry = telemetry
-            hostStates[index].status = .online
-        } catch {
-            hostStates[index].status = .offline(error.localizedDescription)
-        }
+private struct HostRefreshRequest: Sendable {
+    let index: Int
+    let host: HostConfig
+}
 
-        hostStates[index].isRefreshing = false
-    }
+private struct HostRefreshResult: Sendable {
+    let index: Int
+    let outcome: HostRefreshOutcome
+}
+
+private enum HostRefreshOutcome: Sendable {
+    case success(HostTelemetry)
+    case failure(String)
 }

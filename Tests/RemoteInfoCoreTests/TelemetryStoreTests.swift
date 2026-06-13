@@ -50,6 +50,30 @@ final class TelemetryStoreTests: XCTestCase {
         XCTAssertEqual(store.hostStates[1].telemetry?.cpuUsagePercent, 30)
     }
 
+    func testRefreshAllStartsHostCollectionsConcurrently() async {
+        let collector = BlockingTelemetryCollector()
+        let store = TelemetryStore(hosts: hosts, collector: collector)
+
+        let refreshTask = Task {
+            await store.refreshAll()
+        }
+
+        let startedBothBeforeRelease = await collector.waitUntilStartedCount(2, timeoutSeconds: 0.2)
+        let maxInFlightCount = await collector.currentMaxInFlightCount()
+
+        XCTAssertTrue(startedBothBeforeRelease)
+        XCTAssertEqual(maxInFlightCount, 2)
+
+        await collector.succeed(hostID: "host-a", telemetry: sampleTelemetry(cpuUsagePercent: 10))
+        _ = await collector.waitUntilStarted(hostID: "host-b", timeoutSeconds: 0.2)
+        await collector.succeed(hostID: "host-b", telemetry: sampleTelemetry(cpuUsagePercent: 20))
+
+        await refreshTask.value
+
+        XCTAssertEqual(store.hostStates[0].status, .online)
+        XCTAssertEqual(store.hostStates[1].status, .online)
+    }
+
     func testPeriodicRefreshSleepsBeforeRefreshing() async throws {
         let collector = FakeTelemetryCollector()
         collector.enqueue([
@@ -123,5 +147,54 @@ private final class FakeTelemetryCollector: TelemetryCollecting {
         }
 
         return try result.get()
+    }
+}
+
+private actor BlockingTelemetryCollector: TelemetryCollecting {
+    private var startedHostIDs: [String] = []
+    private var continuations: [String: CheckedContinuation<HostTelemetry, Error>] = [:]
+    private var inFlightCount = 0
+    private(set) var maxInFlightCount = 0
+
+    func collect(for host: HostConfig) async throws -> HostTelemetry {
+        startedHostIDs.append(host.id)
+        inFlightCount += 1
+        maxInFlightCount = max(maxInFlightCount, inFlightCount)
+
+        defer {
+            inFlightCount -= 1
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            continuations[host.id] = continuation
+        }
+    }
+
+    func succeed(hostID: String, telemetry: HostTelemetry) {
+        continuations.removeValue(forKey: hostID)?.resume(returning: telemetry)
+    }
+
+    func currentMaxInFlightCount() -> Int {
+        maxInFlightCount
+    }
+
+    func waitUntilStarted(hostID: String, timeoutSeconds: TimeInterval) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+
+        while !startedHostIDs.contains(hostID), Date() < deadline {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        return startedHostIDs.contains(hostID)
+    }
+
+    func waitUntilStartedCount(_ count: Int, timeoutSeconds: TimeInterval) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+
+        while startedHostIDs.count < count, Date() < deadline {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        return startedHostIDs.count >= count
     }
 }
