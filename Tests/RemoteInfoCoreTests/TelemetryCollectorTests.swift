@@ -61,6 +61,33 @@ final class TelemetryCollectorTests: XCTestCase {
         }
     }
 
+    func testSSHFailureDescriptionsAreActionable() {
+        XCTAssertEqual(
+            TelemetryCollectionError
+                .sshFailed(exitCode: 255, message: "Permission denied (publickey).")
+                .localizedDescription,
+            "SSH authentication failed. Check your SSH key, ssh-agent, and BatchMode access."
+        )
+        XCTAssertEqual(
+            TelemetryCollectionError
+                .sshFailed(exitCode: 255, message: "Could not resolve hostname host-a: nodename nor servname provided")
+                .localizedDescription,
+            "SSH host could not be resolved. Check the host alias in ~/.ssh/config."
+        )
+        XCTAssertEqual(
+            TelemetryCollectionError
+                .sshFailed(exitCode: 255, message: "Operation timed out")
+                .localizedDescription,
+            "SSH connection timed out. Check network reachability, firewall rules, or VPN state."
+        )
+        XCTAssertEqual(
+            TelemetryCollectionError
+                .sshFailed(exitCode: 255, message: "Connection refused")
+                .localizedDescription,
+            "SSH connection was refused. Check that sshd is running and reachable on the target."
+        )
+    }
+
     private let host = HostConfig(
         id: "host-a",
         name: "Host A",

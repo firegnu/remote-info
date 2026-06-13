@@ -25,7 +25,7 @@ final class TelemetryStoreTests: XCTestCase {
         XCTAssertEqual(store.hostStates[0].telemetry?.cpuUsagePercent, 10)
         XCTAssertEqual(
             store.hostStates[1].status,
-            .offline("SSH command failed with exit code 255: Permission denied")
+            .offline("SSH authentication failed. Check your SSH key, ssh-agent, and BatchMode access.")
         )
         XCTAssertNil(store.hostStates[1].telemetry)
     }
@@ -47,7 +47,7 @@ final class TelemetryStoreTests: XCTestCase {
 
         XCTAssertEqual(
             store.hostStates[0].status,
-            .offline("SSH command failed with exit code 255: Permission denied")
+            .offline("SSH authentication failed. Check your SSH key, ssh-agent, and BatchMode access.")
         )
         XCTAssertEqual(store.hostStates[0].telemetry?.cpuUsagePercent, 10)
         XCTAssertEqual(store.hostStates[1].status, .online)
