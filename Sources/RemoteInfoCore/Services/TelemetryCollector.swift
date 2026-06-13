@@ -12,51 +12,68 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
       awk '/^cpu / { print $2" "$3" "$4" "$5" "$6" "$7" "$8" "$9 }' /proc/stat
     }
 
-    read_network_interface() {
-      if command -v ip >/dev/null 2>&1; then
-        route_interface="$(ip route get 1.1.1.1 2>/dev/null | awk '{ for (i=1; i<NF; i++) { if ($i == "dev") { print $(i+1); exit } } }' || true)"
-        if [ -n "$route_interface" ]; then
-          printf '%s\\n' "$route_interface"
-          return 0
-        fi
-      fi
-
+    read_physical_interfaces() {
       for path in /sys/class/net/*; do
         [ -e "$path" ] || continue
         interface="${path##*/}"
-        [ "$interface" = "lo" ] && continue
+        case "$interface" in
+          lo|tun*|tap*|wg*|docker*|veth*|br-*|br*|virbr*|vmnet*|tailscale*|singbox*|zt*|ppp*|ipsec*|utun*)
+            continue
+            ;;
+        esac
+        [ -e "$path/device" ] || continue
         printf '%s\\n' "$interface"
-        return 0
       done
     }
 
     read_network() {
-      interface="$1"
-      awk -v iface="$interface" -F ':' '
+      interfaces="$1"
+      awk -v interfaces="$interfaces" -F ':' '
+      BEGIN {
+        split(interfaces, names, " ");
+        for (i in names) {
+          if (names[i] != "") {
+            include[names[i]]=1;
+          }
+        }
+      }
       {
         interface_name=$1;
         gsub(/^[[:space:]]+|[[:space:]]+$/, "", interface_name);
-        if (interface_name == iface) {
+        if (interface_name in include) {
           counters=$2;
           gsub(/^[[:space:]]+/, "", counters);
           split(counters, fields, /[[:space:]]+/);
-          print fields[1]" "fields[9]" "fields[3]" "fields[11]" "fields[4]" "fields[12];
+          receive_bytes += fields[1];
+          transmit_bytes += fields[9];
+          receive_errors += fields[3];
+          transmit_errors += fields[11];
+          receive_drops += fields[4];
+          transmit_drops += fields[12];
+          interface_count++;
+        }
+      }
+      END {
+        if (interface_count > 0) {
+          print receive_bytes" "transmit_bytes" "receive_errors" "transmit_errors" "receive_drops" "transmit_drops;
         }
       }' /proc/net/dev 2>/dev/null
     }
 
-    network_interface="$(read_network_interface || true)"
+    network_interfaces="$(read_physical_interfaces | awk 'NF { printf "%s%s", separator, $1; separator=" " }')"
+    network_label=""
     network_before=""
-    if [ -n "$network_interface" ]; then
-      network_before="$(read_network "$network_interface" || true)"
+    if [ -n "$network_interfaces" ]; then
+      network_label="$(printf '%s\\n' "$network_interfaces" | awk '{ if (NF == 1) { print $1 } else { print "physical" } }')"
+      network_before="$(read_network "$network_interfaces" || true)"
     fi
 
     cpu_before="$(read_cpu)"
     sleep 1
     cpu_after="$(read_cpu)"
     network_after=""
-    if [ -n "$network_interface" ]; then
-      network_after="$(read_network "$network_interface" || true)"
+    if [ -n "$network_interfaces" ]; then
+      network_after="$(read_network "$network_interfaces" || true)"
     fi
 
     cpu_usage_percent="$(awk -v before="$cpu_before" -v after="$cpu_after" '
@@ -90,9 +107,19 @@ public struct TelemetryCollector: TelemetryCollecting, Sendable {
     root_total_bytes="$(printf "%s" "$root_values" | awk '{ print $2 }')"
     kernel_release="$(uname -r)"
     network_line=""
-    if [ -n "$network_interface" ] && [ -n "$network_before" ] && [ -n "$network_after" ]; then
-      network_state="$(cat "/sys/class/net/$network_interface/operstate" 2>/dev/null || printf 'unknown')"
-      network_line="$(awk -v iface="$network_interface" -v state="$network_state" -v before="$network_before" -v after="$network_after" '
+    if [ -n "$network_interfaces" ] && [ -n "$network_before" ] && [ -n "$network_after" ]; then
+      network_state="down"
+      for interface in $network_interfaces; do
+        interface_state="$(cat "/sys/class/net/$interface/operstate" 2>/dev/null || printf 'unknown')"
+        if [ "$interface_state" = "up" ]; then
+          network_state="up"
+          break
+        fi
+        if [ "$network_state" = "down" ] && [ "$interface_state" = "unknown" ]; then
+          network_state="unknown"
+        fi
+      done
+      network_line="$(awk -v iface="$network_label" -v state="$network_state" -v before="$network_before" -v after="$network_after" '
     BEGIN {
       split(before, b, " ");
       split(after, a, " ");

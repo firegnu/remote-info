@@ -19,7 +19,11 @@ final class TelemetryCollectorTests: XCTestCase {
             XCTAssertTrue(script.contains("/proc/net/dev"))
             XCTAssertTrue(script.contains("-F ':'"))
             XCTAssertTrue(script.contains("gsub(/^[[:space:]]+|[[:space:]]+$/, \"\", interface_name)"))
-            XCTAssertTrue(script.contains("ip route get 1.1.1.1"))
+            XCTAssertTrue(script.contains("read_physical_interfaces()"))
+            XCTAssertTrue(script.contains("[ -e \"$path/device\" ] || continue"))
+            XCTAssertTrue(script.contains("network_interfaces=\"$(read_physical_interfaces"))
+            XCTAssertTrue(script.contains("for interface in $network_interfaces"))
+            XCTAssertFalse(script.contains("ip route get 1.1.1.1"))
             XCTAssertTrue(
                 script.contains(
                     "--query-gpu=index,name,driver_version,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,power.limit,fan.speed,clocks.current.graphics"

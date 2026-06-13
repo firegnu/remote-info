@@ -35,7 +35,7 @@ When `nvidia-smi` is available on a remote host, Remote Info collects GPU teleme
 
 ## Activity Telemetry
 
-Remote Info also shows the top CPU-consuming processes and the default network interface. Process telemetry uses `ps` short command names only, not full command lines or arguments. Network telemetry reads the default outbound interface and `/proc/net/dev` counters over the existing one-second sample window.
+Remote Info also shows the top CPU-consuming processes and physical network throughput. Process telemetry uses `ps` short command names only, not full command lines or arguments. Network telemetry aggregates physical interfaces from `/sys/class/net` and `/proc/net/dev` over the existing one-second sample window, excluding loopback, VPN, bridge, Docker, and other virtual interfaces.
 
 ## Refresh Behavior
 
