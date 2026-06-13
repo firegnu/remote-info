@@ -1,0 +1,6 @@
+{
+  "hosts": [
+    { "id": "host-a", "name": "Host A", "sshTarget": "remote-info-host-a" },
+    { "id": "host-b", "name": "Host B", "sshTarget": "remote-info-host-b" }
+  ]
+}
