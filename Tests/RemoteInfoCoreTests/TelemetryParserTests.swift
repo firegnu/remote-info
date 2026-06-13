@@ -87,6 +87,20 @@ final class TelemetryParserTests: XCTestCase {
         }
     }
 
+    func testReportsInvalidLineWithoutSeparator() {
+        let output = completeOutput + "\nnot-a-key-value-line\n"
+
+        XCTAssertThrowsError(
+            try TelemetryParser().parse(
+                output,
+                collectedAt: Date(timeIntervalSince1970: 1_700_000_000),
+                latency: 0.2
+            )
+        ) { error in
+            XCTAssertEqual(error as? TelemetryParseError, .invalidLine("not-a-key-value-line"))
+        }
+    }
+
     func testRejectsNonFiniteDoubleValues() {
         let output = """
         uptime_seconds=123456
