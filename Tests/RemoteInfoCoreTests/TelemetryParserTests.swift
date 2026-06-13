@@ -292,6 +292,39 @@ final class TelemetryParserTests: XCTestCase {
         XCTAssertEqual(RemoteInfoFormatters.bytesPerSecond(18_398_656), "17.5 MB/s")
     }
 
+    func testAgeFormatter() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+
+        XCTAssertEqual(
+            RemoteInfoFormatters.age(
+                since: Date(timeIntervalSince1970: 1_699_999_997),
+                now: now
+            ),
+            "just now"
+        )
+        XCTAssertEqual(
+            RemoteInfoFormatters.age(
+                since: Date(timeIntervalSince1970: 1_699_999_955),
+                now: now
+            ),
+            "45s ago"
+        )
+        XCTAssertEqual(
+            RemoteInfoFormatters.age(
+                since: Date(timeIntervalSince1970: 1_699_999_700),
+                now: now
+            ),
+            "5m ago"
+        )
+        XCTAssertEqual(
+            RemoteInfoFormatters.age(
+                since: Date(timeIntervalSince1970: 1_700_000_030),
+                now: now
+            ),
+            "--"
+        )
+    }
+
     private let completeOutput = """
     uptime_seconds=123456
     kernel_release=6.8.0-test

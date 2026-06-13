@@ -46,6 +46,27 @@ public enum RemoteInfoFormatters {
         return "\(hours)h"
     }
 
+    public static func age(since date: Date, now: Date = Date()) -> String {
+        let ageSeconds = now.timeIntervalSince(date)
+        guard let seconds = roundedInt(ageSeconds), seconds >= 0 else {
+            return "--"
+        }
+
+        if seconds < 10 {
+            return "just now"
+        }
+        if seconds < 60 {
+            return "\(seconds)s ago"
+        }
+
+        let minutes = seconds / 60
+        if minutes < 60 {
+            return "\(minutes)m ago"
+        }
+
+        return "\(minutes / 60)h ago"
+    }
+
     public static func watts(_ value: Double) -> String {
         guard let watts = roundedInt(value) else {
             return "--"

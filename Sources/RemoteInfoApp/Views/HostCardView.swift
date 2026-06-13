@@ -16,6 +16,12 @@ struct HostCardView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                    if let telemetry = state.telemetry {
+                        Text("Updated \(RemoteInfoFormatters.age(since: telemetry.collectedAt))")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
 
                 Spacer(minLength: 8)
